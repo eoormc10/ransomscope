@@ -1,0 +1,814 @@
+import React, { useState, useMemo } from "react";
+import {
+  BarChart, Bar, XAxis, YAxis, Cell, ResponsiveContainer, Tooltip,
+  PieChart, Pie,
+} from "recharts";
+import {
+  ShieldAlert, Skull, Activity, GitBranch, Lock, KeyRound,
+  Crosshair, Building2, Banknote, Radar, AlertTriangle,
+} from "lucide-react";
+
+/* ------------------------------------------------------------------ *
+ * RANSOMSCOPE — Threat Actor Intelligence Console
+ * Data compiled from public reporting (GuidePoint/GRIT, Check Point,
+ * CISA/FBI advisories, Chainalysis, DOJ/Europol, vendor IR reports).
+ * Figures are reported/approximate and intended for education.
+ * ------------------------------------------------------------------ */
+
+const C = {
+  ink: "#0A0D14",
+  panel: "#10151F",
+  panel2: "#161C28",
+  line: "#232C3C",
+  lineSoft: "#1B2230",
+  text: "#E9EDF5",
+  muted: "#828FA6",
+  faint: "#5A6478",
+  red: "#F0454F",     // active threat
+  amber: "#E5A23A",   // disrupted
+  slate: "#58647A",   // defunct
+  cyan: "#36CFC0",    // data / selection accent
+  violet: "#8C7BFF",  // secondary data
+};
+
+const STATUS = {
+  active:    { label: "ACTIVE",    color: C.red,   icon: ShieldAlert },
+  disrupted: { label: "DISRUPTED", color: C.amber, icon: AlertTriangle },
+  defunct:   { label: "DEFUNCT",   color: C.slate, icon: Skull },
+};
+
+// id, name, aka, status, start/end (decimal year), disruptAt (optional marker)
+// origin, parents[], children[], summary, access[], sectors[], encryption,
+// ransom, victims[], peak (display string)
+const GROUPS = [
+  {
+    id: "gandcrab", name: "GandCrab", aka: "—", status: "defunct",
+    start: 2018.0, end: 2019.5, origin: "Russia-nexus",
+    parents: [], children: ["revil"],
+    summary: "RaaS pioneer that popularized the affiliate model. Operators announced 'retirement' in 2019, claiming over $2B extorted — then reappeared as REvil.",
+    access: ["Exploit kits", "Phishing", "RDP"],
+    sectors: ["Broad / opportunistic"],
+    encryption: "Salsa20 + RSA-2048",
+    ransom: "Reported ~$2B extorted across its run (operators' own claim).",
+    victims: ["Widespread SMB campaigns"], peak: "Defined the RaaS template",
+  },
+  {
+    id: "revil", name: "REvil", aka: "Sodinokibi", status: "defunct",
+    start: 2019.3, end: 2022.0, origin: "Russia-nexus",
+    parents: ["gandcrab"], children: ["darkside"],
+    summary: "Successor to GandCrab and one of the most aggressive RaaS crews. Hit Kaseya and JBS before FBI disruption in 2021 and Russian arrests in early 2022.",
+    access: ["Supply-chain (Kaseya VSA)", "Phishing", "Exploited public apps"],
+    sectors: ["Managed service providers", "Food & agriculture", "Manufacturing"],
+    encryption: "Salsa20 + Curve25519 / RSA",
+    ransom: "Demanded $70M (Kaseya, 2021); JBS reportedly paid ~$11M.",
+    victims: ["Kaseya", "JBS Foods", "Acer", "Travelex"], peak: "FBI disruption 2021",
+  },
+  {
+    id: "darkside", name: "DarkSide", aka: "—", status: "defunct",
+    start: 2020.6, end: 2021.4, origin: "Russia-nexus",
+    parents: ["revil"], children: ["blackcat"],
+    summary: "Short-lived but infamous for the Colonial Pipeline attack, which triggered fuel shortages on the US East Coast and intense law-enforcement heat. Disbanded weeks later; reappeared briefly as BlackMatter.",
+    access: ["Compromised VPN credentials", "Phishing"],
+    sectors: ["Energy", "Critical infrastructure"],
+    encryption: "Salsa20 + RSA-1024",
+    ransom: "Colonial Pipeline paid ~$4.4M (2021); DOJ later clawed back ~$2.3M.",
+    victims: ["Colonial Pipeline"], peak: "Colonial Pipeline, May 2021",
+  },
+  {
+    id: "conti", name: "Conti", aka: "—", status: "defunct",
+    start: 2020.0, end: 2022.4, origin: "Russia-nexus (Wizard Spider)",
+    parents: [], children: ["blackbasta", "play"],
+    summary: "A prolific, corporately-structured operation. Imploded in 2022 after the 'Conti Leaks' exposed its internal chats following a pro-Russia stance on the Ukraine war. Members dispersed into Royal/BlackSuit, Black Basta and others.",
+    access: ["Phishing (BazarLoader/TrickBot)", "Exploited public apps", "RDP"],
+    sectors: ["Healthcare", "Government", "Manufacturing"],
+    encryption: "Fast multithreaded AES-256",
+    ransom: "Demands commonly $1M–$25M+; tens of millions collected.",
+    victims: ["Costa Rica government", "Ireland HSE", "JVCKenwood"], peak: "Conti Leaks, 2022",
+  },
+  {
+    id: "hive", name: "Hive", aka: "—", status: "defunct",
+    start: 2021.0, end: 2023.1, origin: "Russia-nexus",
+    parents: [], children: [],
+    summary: "Double-extortion RaaS dismantled in a landmark FBI infiltration: agents quietly held the group's decryption keys for months, handing them to victims before seizing infrastructure in January 2023.",
+    access: ["Phishing", "RDP", "Exploited public apps (ProxyShell)"],
+    sectors: ["Healthcare", "Education", "Critical infrastructure"],
+    encryption: "Hybrid AES + RSA (Go / Rust variants)",
+    ransom: "DOJ estimated ~$100M+ extorted before takedown.",
+    victims: ["Memorial Health System", "Costa Rica CCSS"], peak: "FBI takedown, Jan 2023",
+  },
+  {
+    id: "clop", name: "Clop", aka: "Cl0p", status: "active",
+    start: 2019.0, end: 2026.1, origin: "Russia-nexus (TA505)",
+    parents: [], children: [],
+    summary: "Specialists in mass exploitation of file-transfer software. Often skips encryption entirely — stealing data and extorting at scale. Ran the Accellion, GoAnywhere and MOVEit zero-day campaigns hitting hundreds of organizations at once.",
+    access: ["Zero-day exploitation of file-transfer apps (MOVEit, GoAnywhere, Accellion)"],
+    sectors: ["Finance", "Government", "Healthcare", "Education"],
+    encryption: "Often data-theft only (extortion-first); CryptoMix lineage encryptor",
+    ransom: "MOVEit demands varied; aggregate campaign extortion estimated in the hundreds of millions.",
+    victims: ["MOVEit (600+ orgs)", "GoAnywhere", "Accellion"], peak: "MOVEit campaign, 2023",
+  },
+  {
+    id: "lockbit", name: "LockBit", aka: "LockBit 3.0 / 5.0", status: "disrupted",
+    start: 2019.6, end: 2026.1, disruptAt: 2024.13, origin: "Russia-nexus",
+    parents: [], children: ["ransomhub"],
+    summary: "For years the largest RaaS operation worldwide. 'Operation Cronos' seized its infrastructure in Feb 2024 and the gang 'unseized' a mirror hours later. Reputationally damaged but not gone — released LockBit 5.0 in 2025 and threatened critical infrastructure.",
+    access: ["Phishing", "RDP / valid accounts", "Exploited public apps (Fortinet, ConnectWise)"],
+    sectors: ["Manufacturing", "Professional services", "Healthcare", "Government"],
+    encryption: "Highly optimized fast encryptor; ESXi-aware variants",
+    ransom: "NCA traced ~$110M (2,200 BTC) in unlaundered proceeds; $10M US bounty on leaders.",
+    victims: ["Boeing", "ICBC", "Royal Mail"], peak: "Op. Cronos takedown, Feb 2024",
+  },
+  {
+    id: "blackcat", name: "BlackCat", aka: "ALPHV / Noberus", status: "defunct",
+    start: 2021.8, end: 2024.2, origin: "Russia-nexus",
+    parents: ["darkside"], children: ["ransomhub"],
+    summary: "First major Rust-based ransomware — fast, cross-platform and ESXi-aware. After an apparent ~$22M payment tied to the Change Healthcare attack, leadership pulled an 'exit scam,' stiffing the affiliate and vanishing in early 2024.",
+    access: ["Stolen credentials", "Exploited public apps", "Social engineering"],
+    sectors: ["Healthcare", "Hospitality", "Financial services", "Manufacturing"],
+    encryption: "Rust-based; AES / ChaCha20, ESXi-aware",
+    ransom: "~$22M reported paid via Change Healthcare/Optum (2024).",
+    victims: ["Change Healthcare", "MGM Resorts", "Reddit"], peak: "Exit scam, March 2024",
+  },
+  {
+    id: "ransomhub", name: "RansomHub", aka: "—", status: "disrupted",
+    start: 2024.1, end: 2025.3, origin: "Russia-linked",
+    parents: ["blackcat", "lockbit"], children: ["qilin"],
+    summary: "Filled the post-takedown vacuum by recruiting displaced ALPHV and LockBit affiliates with a generous 90% payout. Surged in 2024, then its own infrastructure went quiet in early 2025 — affiliates migrated onward, notably toward Qilin.",
+    access: ["Affiliate-supplied access", "Stolen VPN credentials", "Exploited public apps"],
+    sectors: ["Healthcare", "Critical infrastructure", "Retail"],
+    encryption: "Cross-platform (Go/C++); ESXi & Windows payloads",
+    ransom: "90% affiliate payout model; multi-million-dollar demands.",
+    victims: ["Rite Aid", "Frontier Communications", "Christie's"], peak: "Affiliate magnet, 2024",
+  },
+  {
+    id: "blackbasta", name: "Black Basta", aka: "—", status: "disrupted",
+    start: 2022.3, end: 2025.6, disruptAt: 2025.1, origin: "Russia-nexus (ex-Conti)",
+    parents: ["conti"], children: [],
+    summary: "Emerged from the Conti diaspora and quickly became a top-tier double-extortion crew. Internal chat logs leaked in 2025, exposing operations and accelerating its decline.",
+    access: ["Phishing (Qakbot)", "Social engineering / IT help-desk lures", "Exploited public apps"],
+    sectors: ["Manufacturing", "Construction", "Healthcare"],
+    encryption: "ChaCha20 + RSA; ESXi-aware",
+    ransom: "Estimated $100M+ collected across its run.",
+    victims: ["Ascension Health", "Capita", "ABB"], peak: "Chat leak, 2025",
+  },
+  {
+    id: "play", name: "Play", aka: "PlayCrypt", status: "active",
+    start: 2022.5, end: 2026.1, origin: "Russia-nexus (closed group)",
+    parents: ["conti"], children: [],
+    summary: "A 'closed' group that doesn't openly recruit affiliates, making it harder for law enforcement to penetrate. Consistently high-volume and a fixture of the top tier into 2026.",
+    access: ["Exploited public apps (FortiOS, Exchange)", "Valid accounts", "RDP"],
+    sectors: ["Government", "Manufacturing", "Professional services"],
+    encryption: "AES-RSA hybrid; intermittent encryption for speed",
+    ransom: "Multi-million-dollar demands; broad mid-market targeting.",
+    victims: ["City of Oakland", "Rackspace", "Krispy Kreme"], peak: "Top-tier through 2026",
+  },
+  {
+    id: "qilin", name: "Qilin", aka: "Agenda", status: "active",
+    start: 2022.6, end: 2026.2, origin: "Russia-nexus",
+    parents: ["ransomhub"], children: ["gentlemen"],
+    summary: "The dominant operator of the moment. A turnkey RaaS that absorbed displaced affiliates after the 2024–25 takedowns and exploded — from 154 victims in 2024 to over 1,000 in 2025, holding the #1 spot for consecutive quarters into 2026.",
+    access: ["IAB-purchased VPN credentials", "Phishing", "Exploited public apps (Fortinet)"],
+    sectors: ["Manufacturing", "Professional services", "Finance", "Healthcare"],
+    encryption: "Rust/Go cross-platform; ESXi-aware, configurable",
+    ransom: "Large enterprise demands; leak-site listings topped 1,000 in 2025.",
+    victims: ["Synnovis (NHS pathology)", "Yangfeng", "Court Services Victoria"], peak: "#1 group, 2025–26",
+  },
+  {
+    id: "akira", name: "Akira", aka: "—", status: "active",
+    start: 2023.2, end: 2026.2, origin: "Russia-nexus",
+    parents: [], children: [],
+    summary: "Persistent, technically capable and constantly refining. A CISA/FBI advisory updated in late 2025 tied Akira to 250+ organizations and expanding targeting of virtualized infrastructure — VMware ESXi, Hyper-V and Nutanix.",
+    access: ["VPN without MFA (Cisco)", "Stolen credentials", "Exploited public apps"],
+    sectors: ["Manufacturing", "Professional services", "Education", "Finance"],
+    encryption: "ChaCha20 + RSA; ESXi / Hyper-V / Nutanix-aware",
+    ransom: "CISA estimated ~$42M+ collected across 250+ victims.",
+    victims: ["250+ organizations (CISA)"], peak: "CISA advisory, Nov 2025",
+  },
+  {
+    id: "gentlemen", name: "The Gentlemen", aka: "—", status: "active",
+    start: 2025.7, end: 2026.2, origin: "Russia-nexus (ex-Qilin)",
+    parents: ["qilin"], children: [],
+    summary: "Founded in late 2025 by a former Qilin affiliate. Jumped to #3 globally within months on the back of a pre-staged stockpile of compromised access — a sign of how fast affiliate spin-offs can scale.",
+    access: ["Pre-staged access stockpile", "Stolen credentials"],
+    sectors: ["APAC & LATAM enterprises", "Manufacturing", "Services"],
+    encryption: "Cross-platform; modern RaaS toolkit",
+    ransom: "Rapid scale: ~166 victims in Q1 2026 (a 315% jump).",
+    victims: ["166 victims, Q1 2026"], peak: "#3 globally, Q1 2026",
+  },
+];
+
+const GROUP_BY_ID = Object.fromEntries(GROUPS.map((g) => [g.id, g]));
+
+const KPIS = [
+  { label: "Named groups in 2025", value: "124", sub: "+46% year-over-year", accent: C.red },
+  { label: "Q1 2026 victims posted", value: "2,122", sub: "to data-leak sites", accent: C.amber },
+  { label: "Top-10 concentration", value: "71%", sub: "of all Q1 2026 victims", accent: C.cyan },
+  { label: "Most prolific (2025)", value: "Qilin", sub: "1,044 victims claimed", accent: C.violet },
+];
+
+const SECTOR_DATA = [
+  { name: "Manufacturing", v: 22 },
+  { name: "Professional svc.", v: 16 },
+  { name: "Healthcare", v: 12 },
+  { name: "Construction", v: 9 },
+  { name: "Technology", v: 8 },
+  { name: "Retail / wholesale", v: 7 },
+  { name: "Finance", v: 7 },
+  { name: "Government", v: 6 },
+  { name: "Education", v: 5 },
+  { name: "Energy", v: 4 },
+];
+
+const GROWTH_DATA = [
+  { year: "2019", v: 30 },
+  { year: "2020", v: 34 },
+  { year: "2021", v: 44 },
+  { year: "2022", v: 52 },
+  { year: "2023", v: 68 },
+  { year: "2024", v: 85 },
+  { year: "2025", v: 124 },
+];
+
+/* ----------------------------- UI bits ----------------------------- */
+
+function StatusBadge({ status, size = "sm" }) {
+  const s = STATUS[status];
+  const Icon = s.icon;
+  const pad = size === "lg" ? "5px 11px" : "3px 8px";
+  const fs = size === "lg" ? 12 : 10.5;
+  return (
+    <span
+      className="rs-badge"
+      style={{
+        color: s.color, borderColor: s.color + "55",
+        background: s.color + "16", padding: pad, fontSize: fs,
+      }}
+    >
+      <Icon size={size === "lg" ? 13 : 11} strokeWidth={2.4} />
+      {s.label}
+    </span>
+  );
+}
+
+function Chip({ children, tone = "neutral", onClick, active }) {
+  const map = {
+    neutral: { c: C.text, b: C.line, bg: C.panel2 },
+    cyan: { c: C.cyan, b: C.cyan + "44", bg: C.cyan + "12" },
+    red: { c: C.red, b: C.red + "44", bg: C.red + "12" },
+  };
+  const m = active ? map.cyan : map[tone];
+  return (
+    <span
+      className={"rs-chip" + (onClick ? " rs-chip-btn" : "")}
+      onClick={onClick}
+      style={{ color: m.c, borderColor: m.b, background: m.bg }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/* --------------------------- Timeline ------------------------------ */
+
+function LineageTimeline({ groups, selected, onSelect }) {
+  const yearMin = 2018, yearMax = 2026.3;
+  const VW = 1000;
+  const plotX0 = 152, plotX1 = 986;
+  const top = 40, rowH = 24, rowGap = 7;
+
+  const rows = useMemo(
+    () => [...groups].sort((a, b) => a.start - b.start),
+    [groups]
+  );
+  const indexOf = Object.fromEntries(rows.map((g, i) => [g.id, i]));
+  const height = top + rows.length * (rowH + rowGap) + 8;
+
+  const xFor = (yr) =>
+    plotX0 + ((yr - yearMin) / (yearMax - yearMin)) * (plotX1 - plotX0);
+  const yMid = (i) => top + i * (rowH + rowGap) + rowH / 2;
+
+  const years = [];
+  for (let y = 2018; y <= 2026; y++) years.push(y);
+
+  // lineage edges (parent -> child)
+  const edges = [];
+  rows.forEach((g) => {
+    g.children.forEach((cid) => {
+      if (indexOf[cid] != null) edges.push({ from: g.id, to: cid });
+    });
+  });
+
+  const sel = selected;
+  const edgeActive = (e) => sel && (e.from === sel || e.to === sel);
+
+  return (
+    <svg
+      viewBox={`0 0 ${VW} ${height}`}
+      width="100%"
+      role="img"
+      aria-label="Ransomware group lineage and lifespan timeline"
+      style={{ display: "block" }}
+    >
+      {/* year gridlines + labels */}
+      {years.map((y) => {
+        const x = xFor(y);
+        return (
+          <g key={y}>
+            <line x1={x} y1={top - 8} x2={x} y2={height - 6}
+              stroke={C.lineSoft} strokeWidth={1} />
+            <text x={x} y={top - 14} fill={C.faint} fontSize="11"
+              textAnchor="middle" fontFamily="ui-monospace, monospace">
+              {y}
+            </text>
+          </g>
+        );
+      })}
+
+      {/* lineage connectors (under bars) */}
+      {edges.map((e, i) => {
+        const pg = GROUP_BY_ID[e.from], cg = GROUP_BY_ID[e.to];
+        const x1 = xFor(pg.end), y1 = yMid(indexOf[e.from]);
+        const x2 = xFor(cg.start), y2 = yMid(indexOf[e.to]);
+        const mx = (x1 + x2) / 2;
+        const on = edgeActive(e);
+        return (
+          <path
+            key={i}
+            d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
+            fill="none"
+            stroke={on ? C.cyan : C.faint}
+            strokeWidth={on ? 1.8 : 1}
+            strokeDasharray="3 3"
+            opacity={on ? 0.95 : 0.22}
+          />
+        );
+      })}
+
+      {/* rows */}
+      {rows.map((g, i) => {
+        const x1 = xFor(g.start), x2 = xFor(g.end);
+        const y = top + i * (rowH + rowGap);
+        const isSel = sel === g.id;
+        const col = STATUS[g.status].color;
+        return (
+          <g
+            key={g.id}
+            className="rs-trow"
+            onClick={() => onSelect(g.id)}
+            style={{ cursor: "pointer" }}
+          >
+            <title>{`${g.name} — ${STATUS[g.status].label}`}</title>
+            {/* hit area */}
+            <rect x={0} y={y - 2} width={VW} height={rowH + 4} fill="transparent" />
+            {/* label */}
+            <text
+              x={plotX0 - 10} y={y + rowH / 2 + 4}
+              fill={isSel ? C.cyan : C.text} fontSize="12"
+              textAnchor="end" fontFamily="ui-monospace, monospace"
+              fontWeight={isSel ? 700 : 500}
+            >
+              {g.name}
+            </text>
+            {/* bar */}
+            <rect
+              x={x1} y={y} width={Math.max(x2 - x1, 6)} height={rowH} rx={5}
+              fill={col} opacity={isSel ? 0.95 : 0.7}
+              stroke={isSel ? C.cyan : "none"} strokeWidth={isSel ? 2 : 0}
+            />
+            {/* disruption marker */}
+            {g.disruptAt && (
+              <line
+                x1={xFor(g.disruptAt)} y1={y - 2}
+                x2={xFor(g.disruptAt)} y2={y + rowH + 2}
+                stroke={C.text} strokeWidth={1.5} strokeDasharray="2 2"
+                opacity={0.85}
+              />
+            )}
+            {/* active arrow */}
+            {g.status === "active" && (
+              <polygon
+                points={`${x2 + 2},${y + rowH / 2} ${x2 - 5},${y + 4} ${x2 - 5},${y + rowH - 4}`}
+                fill={col} opacity={isSel ? 1 : 0.85}
+              />
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* --------------------------- Detail panel -------------------------- */
+
+function Field({ icon: Icon, label, children }) {
+  return (
+    <div className="rs-field">
+      <div className="rs-field-h">
+        <Icon size={13} strokeWidth={2.2} style={{ color: C.cyan }} />
+        <span>{label}</span>
+      </div>
+      <div className="rs-field-b">{children}</div>
+    </div>
+  );
+}
+
+function DetailPanel({ group, onSelect }) {
+  if (!group) {
+    return (
+      <div className="rs-detail rs-detail-empty">
+        <Radar size={30} style={{ color: C.faint }} strokeWidth={1.6} />
+        <p>Select a group from the roster or timeline to load its profile.</p>
+      </div>
+    );
+  }
+  const fmt = (yr) => {
+    if (yr >= 2026) return "present";
+    const y = Math.floor(yr);
+    const m = Math.round((yr - y) * 12);
+    return m > 0 ? `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Math.min(m,11)]} ${y}` : `${y}`;
+  };
+  const lineage = [
+    ...group.parents.map((p) => ({ g: GROUP_BY_ID[p], rel: "from" })),
+    ...group.children.map((c) => ({ g: GROUP_BY_ID[c], rel: "to" })),
+  ].filter((x) => x.g);
+
+  return (
+    <div className="rs-detail">
+      <div className="rs-detail-top">
+        <div>
+          <div className="rs-detail-name">{group.name}</div>
+          <div className="rs-detail-aka">
+            {group.aka !== "—" ? `aka ${group.aka} · ` : ""}{group.origin}
+          </div>
+        </div>
+        <StatusBadge status={group.status} size="lg" />
+      </div>
+
+      <div className="rs-detail-meta">
+        <span>{fmt(group.start)} → {fmt(group.end)}</span>
+        <span className="rs-dot">•</span>
+        <span style={{ color: C.text }}>{group.peak}</span>
+      </div>
+
+      <p className="rs-detail-summary">{group.summary}</p>
+
+      <div className="rs-detail-grid">
+        <Field icon={KeyRound} label="INITIAL ACCESS">
+          <div className="rs-chiprow">
+            {group.access.map((a) => <Chip key={a}>{a}</Chip>)}
+          </div>
+        </Field>
+        <Field icon={Building2} label="TARGETED SECTORS">
+          <div className="rs-chiprow">
+            {group.sectors.map((s) => <Chip key={s}>{s}</Chip>)}
+          </div>
+        </Field>
+        <Field icon={Lock} label="ENCRYPTION">
+          <span>{group.encryption}</span>
+        </Field>
+        <Field icon={Banknote} label="RANSOM PROFILE">
+          <span>{group.ransom}</span>
+        </Field>
+        <Field icon={Crosshair} label="NOTABLE VICTIMS">
+          <div className="rs-chiprow">
+            {group.victims.map((v) => <Chip key={v} tone="red">{v}</Chip>)}
+          </div>
+        </Field>
+        {lineage.length > 0 && (
+          <Field icon={GitBranch} label="LINEAGE">
+            <div className="rs-chiprow">
+              {lineage.map(({ g, rel }) => (
+                <Chip key={g.id + rel} tone="cyan" onClick={() => onSelect(g.id)}>
+                  {rel === "from" ? "↰ " : "↳ "}{g.name}
+                </Chip>
+              ))}
+            </div>
+          </Field>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------- Charts ------------------------------ */
+
+function ChartCard({ title, note, children, h = 220 }) {
+  return (
+    <div className="rs-card">
+      <div className="rs-card-h">{title}</div>
+      <div style={{ height: h }}>{children}</div>
+      {note && <div className="rs-card-note">{note}</div>}
+    </div>
+  );
+}
+
+function chartTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div style={{
+      background: C.ink, border: `1px solid ${C.line}`, borderRadius: 6,
+      padding: "6px 10px", fontSize: 12, color: C.text,
+      fontFamily: "ui-monospace, monospace",
+    }}>
+      <div style={{ color: C.muted }}>{label}</div>
+      <div style={{ color: C.cyan }}>{payload[0].value}</div>
+    </div>
+  );
+}
+
+/* ------------------------------ App -------------------------------- */
+
+export default function RansomScope() {
+  const [selected, setSelected] = useState("qilin");
+  const [filter, setFilter] = useState("all");
+
+  const filtered = useMemo(
+    () => (filter === "all" ? GROUPS : GROUPS.filter((g) => g.status === filter)),
+    [filter]
+  );
+  const group = selected ? GROUP_BY_ID[selected] : null;
+
+  const statusCounts = useMemo(() => {
+    const c = { active: 0, disrupted: 0, defunct: 0 };
+    GROUPS.forEach((g) => c[g.status]++);
+    return [
+      { name: "Active", key: "active", value: c.active, color: C.red },
+      { name: "Disrupted", key: "disrupted", value: c.disrupted, color: C.amber },
+      { name: "Defunct", key: "defunct", value: c.defunct, color: C.slate },
+    ];
+  }, []);
+
+  return (
+    <div className="rs-root">
+      <style>{css}</style>
+
+      {/* header */}
+      <header className="rs-header">
+        <div className="rs-brand">
+          <div className="rs-logo"><Radar size={20} strokeWidth={2.2} /></div>
+          <div>
+            <h1>RANSOMSCOPE</h1>
+            <div className="rs-tag">Threat Actor Intelligence Console</div>
+          </div>
+        </div>
+        <div className="rs-asof">
+          <span className="rs-pulse" /> LIVE FEED · compiled June 2026
+        </div>
+      </header>
+
+      {/* KPIs */}
+      <section className="rs-kpis">
+        {KPIS.map((k) => (
+          <div className="rs-kpi" key={k.label}>
+            <div className="rs-kpi-bar" style={{ background: k.accent }} />
+            <div className="rs-kpi-val" style={{ color: k.accent }}>{k.value}</div>
+            <div className="rs-kpi-label">{k.label}</div>
+            <div className="rs-kpi-sub">{k.sub}</div>
+          </div>
+        ))}
+      </section>
+
+      {/* timeline */}
+      <section className="rs-card rs-timeline-card">
+        <div className="rs-card-h rs-th">
+          <span><Activity size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> EVOLUTION &amp; LINEAGE — 2018 to present</span>
+          <div className="rs-legend">
+            <span><i style={{ background: C.red }} /> Active</span>
+            <span><i style={{ background: C.amber }} /> Disrupted</span>
+            <span><i style={{ background: C.slate }} /> Defunct</span>
+            <span className="rs-legend-dash"><i /> Lineage / takedown</span>
+          </div>
+        </div>
+        <div className="rs-hint">Click a group to trace its ancestry — dashed lines mark rebrands and where affiliates fled after takedowns.</div>
+        <LineageTimeline groups={GROUPS} selected={selected} onSelect={setSelected} />
+      </section>
+
+      {/* roster + detail */}
+      <section className="rs-main">
+        <div className="rs-roster">
+          <div className="rs-roster-h">
+            <span>ROSTER</span>
+            <div className="rs-filters">
+              {["all", "active", "disrupted", "defunct"].map((f) => (
+                <button
+                  key={f}
+                  className={"rs-filter" + (filter === f ? " on" : "")}
+                  onClick={() => setFilter(f)}
+                >
+                  {f === "all" ? "ALL" : STATUS[f].label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="rs-roster-list">
+            {filtered.map((g) => (
+              <button
+                key={g.id}
+                className={"rs-rcard" + (selected === g.id ? " on" : "")}
+                onClick={() => setSelected(g.id)}
+              >
+                <span className="rs-rdot" style={{ background: STATUS[g.status].color }} />
+                <span className="rs-rname">{g.name}</span>
+                <span className="rs-ryears">
+                  {Math.floor(g.start)}–{g.end >= 2026 ? "now" : Math.floor(g.end)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <DetailPanel group={group} onSelect={setSelected} />
+      </section>
+
+      {/* charts */}
+      <section className="rs-charts">
+        <ChartCard
+          title="GROUP PROLIFERATION → CONSOLIDATION"
+          note="Distinct named groups tracked per year. A record 124 in 2025; yet by Q1 2026, 71% of victims came from just 10 operators."
+          h={210}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={GROWTH_DATA} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+              <XAxis dataKey="year" stroke={C.muted} fontSize={11}
+                tickLine={false} axisLine={{ stroke: C.line }} />
+              <YAxis stroke={C.muted} fontSize={11}
+                tickLine={false} axisLine={false} />
+              <Tooltip content={chartTooltip} cursor={{ fill: C.panel2 }} />
+              <Bar dataKey="v" radius={[4, 4, 0, 0]}>
+                {GROWTH_DATA.map((d, i) => (
+                  <Cell key={i} fill={i === GROWTH_DATA.length - 1 ? C.red : C.cyan} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard
+          title="TOP TARGETED SECTORS"
+          note="Approximate share of victims across the ecosystem. Manufacturing and professional services lead due to low tolerance for downtime."
+          h={210}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart layout="vertical" data={SECTOR_DATA}
+              margin={{ top: 0, right: 12, left: 8, bottom: 0 }}>
+              <XAxis type="number" hide />
+              <YAxis type="category" dataKey="name" stroke={C.muted}
+                fontSize={10.5} width={104} tickLine={false}
+                axisLine={false} />
+              <Tooltip content={chartTooltip} cursor={{ fill: C.panel2 }} />
+              <Bar dataKey="v" radius={[0, 4, 4, 0]} fill={C.violet} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        <ChartCard
+          title="OPERATIONAL STATUS"
+          note={`Of ${GROUPS.length} tracked groups. Takedowns and exit scams thin the field, but survivors absorb the displaced.`}
+          h={210}
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={statusCounts} dataKey="value" nameKey="name"
+                cx="50%" cy="50%" innerRadius={42} outerRadius={70}
+                paddingAngle={3} stroke="none">
+                {statusCounts.map((s) => <Cell key={s.key} fill={s.color} />)}
+              </Pie>
+              <Tooltip content={chartTooltip} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="rs-donut-legend">
+            {statusCounts.map((s) => (
+              <span key={s.key}>
+                <i style={{ background: s.color }} /> {s.name} · {s.value}
+              </span>
+            ))}
+          </div>
+        </ChartCard>
+      </section>
+
+      <footer className="rs-footer">
+        <span>SOURCES — GuidePoint/GRIT · Check Point Research · CISA/FBI advisories · Chainalysis · DOJ &amp; Europol · vendor IR reporting.</span>
+        <span>Figures are reported/approximate and compiled for educational use. Not operational intelligence.</span>
+      </footer>
+    </div>
+  );
+}
+
+const css = `
+.rs-root{
+  --ink:${C.ink};
+  background:radial-gradient(1200px 600px at 80% -10%, #131A28 0%, ${C.ink} 60%);
+  color:${C.text}; min-height:100%; padding:22px;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-size:14px; line-height:1.5;
+}
+.rs-root *{box-sizing:border-box;}
+
+.rs-header{display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:12px;margin-bottom:18px;}
+.rs-brand{display:flex;align-items:center;gap:13px;}
+.rs-logo{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;
+  background:${C.red}1a;color:${C.red};border:1px solid ${C.red}44;}
+.rs-header h1{margin:0;font-size:21px;letter-spacing:3px;font-weight:800;}
+.rs-tag{color:${C.muted};font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;
+  font-family:ui-monospace,monospace;margin-top:1px;}
+.rs-asof{color:${C.muted};font-size:11px;letter-spacing:1px;
+  font-family:ui-monospace,monospace;display:flex;align-items:center;gap:8px;
+  border:1px solid ${C.line};border-radius:20px;padding:6px 13px;background:${C.panel};}
+.rs-pulse{width:7px;height:7px;border-radius:50%;background:${C.red};
+  box-shadow:0 0 0 0 ${C.red}99;animation:rspulse 2s infinite;}
+@keyframes rspulse{0%{box-shadow:0 0 0 0 ${C.red}88;}70%{box-shadow:0 0 0 7px ${C.red}00;}100%{box-shadow:0 0 0 0 ${C.red}00;}}
+
+.rs-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
+.rs-kpi{position:relative;background:${C.panel};border:1px solid ${C.line};
+  border-radius:12px;padding:15px 16px 14px;overflow:hidden;}
+.rs-kpi-bar{position:absolute;left:0;top:0;bottom:0;width:3px;}
+.rs-kpi-val{font-size:25px;font-weight:800;letter-spacing:0.5px;line-height:1;}
+.rs-kpi-label{margin-top:7px;font-size:11.5px;color:${C.text};font-weight:600;}
+.rs-kpi-sub{font-size:11px;color:${C.muted};margin-top:2px;
+  font-family:ui-monospace,monospace;}
+
+.rs-card{background:${C.panel};border:1px solid ${C.line};border-radius:14px;
+  padding:16px;margin-bottom:14px;}
+.rs-card-h{font-size:12px;letter-spacing:1.4px;font-weight:700;color:${C.text};
+  text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:7px;
+  font-family:ui-monospace,monospace;}
+.rs-card-note{font-size:11.5px;color:${C.muted};margin-top:10px;line-height:1.45;}
+
+.rs-timeline-card{padding-bottom:18px;}
+.rs-th{justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.rs-legend{display:flex;gap:14px;font-size:10.5px;color:${C.muted};
+  letter-spacing:0.5px;font-family:ui-monospace,monospace;flex-wrap:wrap;}
+.rs-legend span{display:flex;align-items:center;gap:5px;}
+.rs-legend i{width:11px;height:8px;border-radius:2px;display:inline-block;}
+.rs-legend-dash i{width:14px;height:0;border-top:1.5px dashed ${C.faint};border-radius:0;}
+.rs-hint{font-size:11.5px;color:${C.faint};margin-bottom:6px;font-style:italic;}
+.rs-trow:hover rect:nth-of-type(2){opacity:1;}
+
+.rs-main{display:grid;grid-template-columns:300px 1fr;gap:14px;margin-bottom:14px;}
+.rs-roster{background:${C.panel};border:1px solid ${C.line};border-radius:14px;
+  padding:14px;display:flex;flex-direction:column;}
+.rs-roster-h{display:flex;flex-direction:column;gap:10px;margin-bottom:11px;}
+.rs-roster-h>span{font-size:12px;letter-spacing:1.4px;font-weight:700;
+  font-family:ui-monospace,monospace;}
+.rs-filters{display:flex;gap:5px;flex-wrap:wrap;}
+.rs-filter{font-size:9.5px;letter-spacing:0.6px;padding:4px 8px;border-radius:6px;
+  border:1px solid ${C.line};background:transparent;color:${C.muted};cursor:pointer;
+  font-family:ui-monospace,monospace;transition:all .15s;}
+.rs-filter:hover{color:${C.text};border-color:${C.faint};}
+.rs-filter.on{background:${C.cyan}14;color:${C.cyan};border-color:${C.cyan}55;}
+.rs-roster-list{display:flex;flex-direction:column;gap:5px;overflow:auto;max-height:330px;}
+.rs-rcard{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;
+  border:1px solid transparent;background:${C.panel2};cursor:pointer;text-align:left;
+  width:100%;transition:all .14s;}
+.rs-rcard:hover{border-color:${C.line};}
+.rs-rcard.on{border-color:${C.cyan}66;background:${C.cyan}10;}
+.rs-rdot{width:8px;height:8px;border-radius:50%;flex:none;}
+.rs-rname{font-weight:600;font-size:13px;color:${C.text};flex:1;}
+.rs-ryears{font-size:11px;color:${C.muted};font-family:ui-monospace,monospace;}
+
+.rs-detail{background:${C.panel};border:1px solid ${C.line};border-radius:14px;
+  padding:20px;min-height:300px;}
+.rs-detail-empty{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:12px;color:${C.muted};text-align:center;}
+.rs-detail-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+.rs-detail-name{font-size:24px;font-weight:800;letter-spacing:0.3px;}
+.rs-detail-aka{font-size:12px;color:${C.muted};margin-top:3px;
+  font-family:ui-monospace,monospace;}
+.rs-detail-meta{display:flex;align-items:center;gap:9px;margin-top:11px;
+  font-size:11.5px;color:${C.muted};font-family:ui-monospace,monospace;}
+.rs-dot{color:${C.faint};}
+.rs-detail-summary{margin:14px 0 4px;font-size:13.5px;line-height:1.6;color:#CDD4E0;}
+.rs-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 22px;margin-top:16px;}
+.rs-field-h{display:flex;align-items:center;gap:6px;font-size:10.5px;letter-spacing:1px;
+  color:${C.muted};font-family:ui-monospace,monospace;margin-bottom:7px;font-weight:600;}
+.rs-field-b{font-size:13px;color:#D7DCE7;line-height:1.5;}
+.rs-chiprow{display:flex;flex-wrap:wrap;gap:6px;}
+.rs-chip{font-size:11.5px;padding:4px 9px;border-radius:7px;border:1px solid;
+  display:inline-flex;align-items:center;line-height:1.2;}
+.rs-chip-btn{cursor:pointer;transition:filter .14s;}
+.rs-chip-btn:hover{filter:brightness(1.3);}
+.rs-badge{display:inline-flex;align-items:center;gap:5px;border:1px solid;border-radius:7px;
+  font-weight:700;letter-spacing:1px;font-family:ui-monospace,monospace;white-space:nowrap;}
+
+.rs-charts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.rs-charts .rs-card{margin-bottom:0;}
+.rs-donut-legend{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;
+  font-size:11px;color:${C.muted};font-family:ui-monospace,monospace;margin-top:4px;}
+.rs-donut-legend span{display:flex;align-items:center;gap:5px;}
+.rs-donut-legend i{width:9px;height:9px;border-radius:2px;}
+
+.rs-footer{margin-top:16px;display:flex;flex-direction:column;gap:4px;
+  font-size:10.5px;color:${C.faint};font-family:ui-monospace,monospace;line-height:1.5;}
+
+@media (max-width:880px){
+  .rs-kpis{grid-template-columns:1fr 1fr;}
+  .rs-main{grid-template-columns:1fr;}
+  .rs-charts{grid-template-columns:1fr;}
+  .rs-detail-grid{grid-template-columns:1fr;}
+  .rs-roster-list{max-height:none;}
+}
+@media (prefers-reduced-motion:reduce){
+  .rs-pulse{animation:none;}
+}
+`;
