@@ -7,6 +7,7 @@ import {
   ShieldAlert, Skull, Activity, GitBranch, Lock, KeyRound,
   Crosshair, Building2, Banknote, Radar, AlertTriangle,
   ExternalLink, FileText, Search, X, Target,
+  Plus, Check, ArrowLeftRight,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ *
@@ -374,7 +375,14 @@ function readHashState() {
     q: h.get("q"),
     access: h.get("access"),
     view: h.get("view"),
+    cmp: h.get("cmp"),
   };
+}
+
+// Validate a comma-separated id list from the hash → known ids, capped at 3.
+function parseCompare(raw) {
+  if (!raw) return [];
+  return raw.split(",").filter((id) => GROUP_BY_ID[id]).slice(0, 3);
 }
 
 const KPIS = [
@@ -723,6 +731,14 @@ function LineageGraph({ selected, onSelect, matchIds, filtering }) {
 
 /* --------------------------- Detail panel -------------------------- */
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtDate(yr) {
+  if (yr >= 2026) return "present";
+  const y = Math.floor(yr);
+  const m = Math.round((yr - y) * 12);
+  return m > 0 ? `${MONTHS[Math.min(m, 11)]} ${y}` : `${y}`;
+}
+
 function Field({ icon: Icon, label, children, wide }) {
   return (
     <div className="rs-field" style={wide ? { gridColumn: "1 / -1" } : undefined}>
@@ -744,12 +760,7 @@ function DetailPanel({ group, onSelect }) {
       </div>
     );
   }
-  const fmt = (yr) => {
-    if (yr >= 2026) return "present";
-    const y = Math.floor(yr);
-    const m = Math.round((yr - y) * 12);
-    return m > 0 ? `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][Math.min(m,11)]} ${y}` : `${y}`;
-  };
+  const fmt = fmtDate;
   const lineage = [
     ...group.parents.map((p) => ({ g: GROUP_BY_ID[p], rel: "from" })),
     ...group.children.map((c) => ({ g: GROUP_BY_ID[c], rel: "to" })),
@@ -850,6 +861,109 @@ function DetailPanel({ group, onSelect }) {
   );
 }
 
+/* --------------------------- Compare panel ------------------------- */
+
+function ComparePanel({ groups, onSelect, onRemove, onClear }) {
+  if (groups.length < 2) return null;
+  const cols = `170px repeat(${groups.length}, minmax(190px, 1fr))`;
+  const plainChips = (items) => (
+    <div className="rs-chiprow">
+      {(items || []).map((x) => (
+        <span key={x} className="rs-chip"
+          style={{ color: C.text, borderColor: C.line, background: C.panel2 }}>
+          {x}
+        </span>
+      ))}
+    </div>
+  );
+  const rows = [
+    { label: "Active", cell: (g) => `${fmtDate(g.start)} → ${fmtDate(g.end)}` },
+    { label: "Origin", cell: (g) => g.origin },
+    { label: "Signature moment", cell: (g) => g.peak },
+    { label: "Initial access", cell: (g) => plainChips(TAGS[g.id]) },
+    { label: "Targeted sectors", cell: (g) => plainChips(g.sectors) },
+    { label: "Encryption", cell: (g) => g.encryption },
+    { label: "Ransom profile", cell: (g) => g.ransom },
+    {
+      label: "Notable victims",
+      cell: (g) => (
+        <div className="rs-chiprow">
+          {g.victims.map((v) => (
+            <Chip key={v} tone="red" href={VICTIM_LINKS[v]}>{v}</Chip>
+          ))}
+        </div>
+      ),
+    },
+    {
+      label: "MITRE ATT&CK",
+      cell: (g) => (
+        <div className="rs-chiprow">
+          {attackFor(g).map((t) => (
+            <a key={t.id} className="rs-attack" href={t.url} target="_blank"
+              rel="noopener noreferrer" title={`${t.id} · ${t.name}`}>
+              <span className="rs-attack-id">{t.id}</span>
+            </a>
+          ))}
+        </div>
+      ),
+    },
+    {
+      label: "Lineage",
+      cell: (g) => {
+        const lin = [
+          ...g.parents.map((p) => ({ g: GROUP_BY_ID[p], rel: "from" })),
+          ...g.children.map((c) => ({ g: GROUP_BY_ID[c], rel: "to" })),
+        ].filter((x) => x.g);
+        if (!lin.length) return <span className="rs-cmp-muted">—</span>;
+        return (
+          <div className="rs-chiprow">
+            {lin.map(({ g: lg, rel }) => (
+              <Chip key={lg.id + rel} tone="cyan" onClick={() => onSelect(lg.id)}>
+                {rel === "from" ? "↰ " : "↳ "}{lg.name}
+              </Chip>
+            ))}
+          </div>
+        );
+      },
+    },
+  ];
+  return (
+    <section className="rs-card rs-compare">
+      <div className="rs-card-h rs-th">
+        <span>
+          <ArrowLeftRight size={14} strokeWidth={2.2} style={{ color: C.cyan }} />{" "}
+          COMPARE — {groups.length} GROUPS
+        </span>
+        <button className="rs-filter" onClick={onClear}>CLEAR ALL</button>
+      </div>
+      <div className="rs-cmp-scroll">
+        <div className="rs-cmp-grid" style={{ gridTemplateColumns: cols }}>
+          <div className="rs-cmp-corner" />
+          {groups.map((g) => (
+            <div className="rs-cmp-head" key={g.id}>
+              <div className="rs-cmp-head-top">
+                <button className="rs-cmp-name" onClick={() => onSelect(g.id)}
+                  title="View full profile">{g.name}</button>
+                <button className="rs-cmp-x" onClick={() => onRemove(g.id)}
+                  aria-label={`Remove ${g.name}`}><X size={13} /></button>
+              </div>
+              <StatusBadge status={g.status} />
+            </div>
+          ))}
+          {rows.map((row) => (
+            <React.Fragment key={row.label}>
+              <div className="rs-cmp-label">{row.label}</div>
+              {groups.map((g) => (
+                <div className="rs-cmp-cell" key={g.id}>{row.cell(g)}</div>
+              ))}
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ----------------------------- Charts ------------------------------ */
 
 function ChartCard({ title, note, children, h = 220 }) {
@@ -892,6 +1006,14 @@ export default function RansomScope() {
     ACCESS_TAGS.includes(init.access) ? init.access : null
   );
   const [view, setView] = useState(init.view === "lineage" ? "lineage" : "timeline");
+  const [compareIds, setCompareIds] = useState(() => parseCompare(init.cmp));
+
+  const toggleCompare = (id) =>
+    setCompareIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : prev.length >= 3 ? prev : [...prev, id]
+    );
 
   // Write current state to the URL hash (replaceState → no history spam).
   useEffect(() => {
@@ -901,6 +1023,7 @@ export default function RansomScope() {
     if (query.trim()) p.set("q", query.trim());
     if (facet) p.set("access", facet);
     if (view !== "timeline") p.set("view", view);
+    if (compareIds.length) p.set("cmp", compareIds.join(","));
     const qs = p.toString();
     const newHash = qs ? "#" + qs : "";
     if (newHash !== window.location.hash) {
@@ -908,7 +1031,7 @@ export default function RansomScope() {
         null, "", window.location.pathname + window.location.search + newHash
       );
     }
-  }, [selected, filter, query, facet, view]);
+  }, [selected, filter, query, facet, view, compareIds]);
 
   // Respond to manual hash edits / back-forward navigation.
   useEffect(() => {
@@ -919,6 +1042,7 @@ export default function RansomScope() {
       setQuery(s.q || "");
       setFacet(ACCESS_TAGS.includes(s.access) ? s.access : null);
       setView(s.view === "lineage" ? "lineage" : "timeline");
+      setCompareIds(parseCompare(s.cmp));
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -1086,25 +1210,51 @@ export default function RansomScope() {
             {filtered.length === 0 ? (
               <div className="rs-empty">No groups match these filters.</div>
             ) : (
-              filtered.map((g) => (
-                <button
-                  key={g.id}
-                  className={"rs-rcard" + (selected === g.id ? " on" : "")}
-                  onClick={() => setSelected(g.id)}
-                >
-                  <span className="rs-rdot" style={{ background: STATUS[g.status].color }} />
-                  <span className="rs-rname">{g.name}</span>
-                  <span className="rs-ryears">
-                    {Math.floor(g.start)}–{g.end >= 2026 ? "now" : Math.floor(g.end)}
-                  </span>
-                </button>
-              ))
+              filtered.map((g) => {
+                const inCmp = compareIds.includes(g.id);
+                const atCap = compareIds.length >= 3 && !inCmp;
+                return (
+                  <div
+                    key={g.id}
+                    className={"rs-rcard" + (selected === g.id ? " on" : "")}
+                  >
+                    <button className="rs-rcard-main" onClick={() => setSelected(g.id)}>
+                      <span className="rs-rdot" style={{ background: STATUS[g.status].color }} />
+                      <span className="rs-rname">{g.name}</span>
+                      <span className="rs-ryears">
+                        {Math.floor(g.start)}–{g.end >= 2026 ? "now" : Math.floor(g.end)}
+                      </span>
+                    </button>
+                    <button
+                      className={"rs-rcmp" + (inCmp ? " on" : "")}
+                      onClick={() => toggleCompare(g.id)}
+                      disabled={atCap}
+                      aria-pressed={inCmp}
+                      title={
+                        inCmp ? "Remove from comparison"
+                          : atCap ? "Comparison full (max 3)"
+                          : "Add to comparison"
+                      }
+                    >
+                      {inCmp ? <Check size={13} /> : <Plus size={13} />}
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
 
         <DetailPanel group={group} onSelect={setSelected} />
       </section>
+
+      {/* comparison */}
+      <ComparePanel
+        groups={compareIds.map((id) => GROUP_BY_ID[id]).filter(Boolean)}
+        onSelect={setSelected}
+        onRemove={toggleCompare}
+        onClear={() => setCompareIds([])}
+      />
 
       {/* charts */}
       <section className="rs-charts">
@@ -1244,11 +1394,17 @@ const css = `
 .rs-filter:hover{color:${C.text};border-color:${C.faint};}
 .rs-filter.on{background:${C.cyan}14;color:${C.cyan};border-color:${C.cyan}55;}
 .rs-roster-list{display:flex;flex-direction:column;gap:5px;overflow:auto;max-height:330px;}
-.rs-rcard{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;
-  border:1px solid transparent;background:${C.panel2};cursor:pointer;text-align:left;
-  width:100%;transition:all .14s;}
+.rs-rcard{display:flex;align-items:stretch;border-radius:9px;border:1px solid transparent;
+  background:${C.panel2};overflow:hidden;transition:all .14s;}
 .rs-rcard:hover{border-color:${C.line};}
 .rs-rcard.on{border-color:${C.cyan}66;background:${C.cyan}10;}
+.rs-rcard-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:9px 11px;
+  background:transparent;border:none;cursor:pointer;text-align:left;color:inherit;font:inherit;}
+.rs-rcmp{flex:none;width:34px;display:grid;place-items:center;background:transparent;border:none;
+  border-left:1px solid ${C.line};color:${C.faint};cursor:pointer;transition:all .14s;}
+.rs-rcmp:hover:not(:disabled){color:${C.cyan};background:${C.cyan}12;}
+.rs-rcmp.on{color:${C.cyan};background:${C.cyan}1a;}
+.rs-rcmp:disabled{opacity:0.3;cursor:not-allowed;}
 .rs-rdot{width:8px;height:8px;border-radius:50%;flex:none;}
 .rs-rname{font-weight:600;font-size:13px;color:${C.text};flex:1;}
 .rs-ryears{font-size:11px;color:${C.muted};font-family:ui-monospace,monospace;}
@@ -1337,6 +1493,27 @@ a.rs-chip{text-decoration:none;}
 .rs-attack-id{font-size:10.5px;font-weight:700;color:${C.ink};background:${C.violet};
   border-radius:5px;padding:2px 6px;font-family:ui-monospace,monospace;}
 .rs-attack-name{font-size:11.5px;color:${C.violet};padding-right:4px;}
+
+/* comparison table */
+.rs-compare{margin-top:0;}
+.rs-cmp-scroll{overflow-x:auto;margin:0 -4px;padding:0 4px;}
+.rs-cmp-grid{display:grid;min-width:520px;border-top:1px solid ${C.line};}
+.rs-cmp-corner{background:${C.panel};border-bottom:1px solid ${C.line};position:sticky;left:0;z-index:2;}
+.rs-cmp-head{padding:11px 13px;display:flex;flex-direction:column;gap:8px;background:${C.panel2};
+  border-bottom:1px solid ${C.line};border-left:1px solid ${C.lineSoft};}
+.rs-cmp-head-top{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.rs-cmp-name{background:none;border:none;padding:0;color:${C.text};font-weight:700;font-size:15px;
+  cursor:pointer;text-align:left;}
+.rs-cmp-name:hover{color:${C.cyan};}
+.rs-cmp-x{background:none;border:none;color:${C.faint};cursor:pointer;padding:2px;
+  display:grid;place-items:center;}
+.rs-cmp-x:hover{color:${C.red};}
+.rs-cmp-label{padding:11px 13px;border-bottom:1px solid ${C.lineSoft};background:${C.panel};
+  font-size:10px;letter-spacing:0.6px;color:${C.muted};font-family:ui-monospace,monospace;
+  text-transform:uppercase;position:sticky;left:0;z-index:1;}
+.rs-cmp-cell{padding:11px 13px;border-bottom:1px solid ${C.lineSoft};border-left:1px solid ${C.lineSoft};
+  font-size:12.5px;color:#D7DCE7;line-height:1.5;}
+.rs-cmp-muted{color:${C.faint};}
 
 @media (max-width:880px){
   .rs-kpis{grid-template-columns:1fr 1fr;}
