@@ -1116,7 +1116,8 @@ function OriginsStrip() {
 
 /* ----------------------------- Live feed --------------------------- */
 
-function LiveFeed() {
+// Shared live-feed state — consumed by both the header badge and the section.
+function useLiveFeed() {
   const [s, setS] = useState({ loading: true, error: null, data: null, updated: null });
 
   const load = (force) => {
@@ -1139,7 +1140,16 @@ function LiveFeed() {
   };
 
   useEffect(() => { load(); }, []);
+  return [s, load];
+}
 
+// Freshness helper: true if the feed was compiled within the last 20 minutes.
+function feedFresh(updated) {
+  if (!updated) return false;
+  return (Date.now() - new Date(updated).getTime()) / 60000 < 20;
+}
+
+function LiveFeed({ s, onRefresh }) {
   // Not configured yet — show a setup hint instead of a broken section.
   if (!WORKER_URL) {
     return (
@@ -1156,10 +1166,7 @@ function LiveFeed() {
   const vulns = s.data?.vulnerabilities || [];
   const victims = s.data?.recentVictims || [];
   const actors = s.data?.threatActors || [];
-
-  // Freshness: green if the feed was compiled recently (within 20 min).
-  const ageMin = s.updated ? (Date.now() - new Date(s.updated).getTime()) / 60000 : Infinity;
-  const fresh = ageMin < 20;
+  const fresh = feedFresh(s.updated);
 
   return (
     <section className="rs-card rs-live">
@@ -1178,7 +1185,7 @@ function LiveFeed() {
               compiled {new Date(s.updated).toLocaleString()}
             </span>
           )}
-          <button className="rs-live-refresh" onClick={() => load(true)} disabled={s.loading}
+          <button className="rs-live-refresh" onClick={() => onRefresh(true)} disabled={s.loading}
             title="Refresh" aria-label="Refresh live feed">
             <RefreshCw size={13} className={s.loading ? "rs-spin" : ""} />
           </button>
@@ -1282,6 +1289,8 @@ export default function RansomScope() {
   );
   const [view, setView] = useState(init.view === "lineage" ? "lineage" : "timeline");
   const [compareIds, setCompareIds] = useState(() => parseCompare(init.cmp));
+  const [live, loadLive] = useLiveFeed();
+  const liveFresh = feedFresh(live.updated);
 
   const toggleCompare = (id) =>
     setCompareIds((prev) =>
@@ -1361,7 +1370,14 @@ export default function RansomScope() {
           </div>
         </div>
         <div className="rs-asof">
-          <span className="rs-pulse" /> LIVE FEED · compiled June 2026
+          {WORKER_URL && live.updated && !live.error ? (
+            <>
+              <span className="rs-pulse" style={{ "--pc": liveFresh ? C.green : C.amber }} />
+              LIVE FEED · compiled {new Date(live.updated).toLocaleString()}
+            </>
+          ) : (
+            <><span className="rs-pulse" /> LIVE FEED · {live.loading ? "connecting…" : "compiled June 2026"}</>
+          )}
         </div>
       </header>
 
@@ -1601,7 +1617,7 @@ export default function RansomScope() {
       </section>
 
       {/* live feed (Cloudflare Worker proxy) */}
-      <LiveFeed />
+      <LiveFeed s={live} onRefresh={loadLive} />
 
       <footer className="rs-footer">
         <span>SOURCES — GuidePoint/GRIT · Check Point Research · CISA/FBI advisories · Chainalysis · DOJ &amp; Europol · vendor IR reporting.</span>
@@ -1632,9 +1648,9 @@ const css = `
 .rs-asof{color:${C.muted};font-size:11px;letter-spacing:1px;
   font-family:ui-monospace,monospace;display:flex;align-items:center;gap:8px;
   border:1px solid ${C.line};border-radius:20px;padding:6px 13px;background:${C.panel};}
-.rs-pulse{width:7px;height:7px;border-radius:50%;background:${C.red};
-  box-shadow:0 0 0 0 ${C.red}99;animation:rspulse 2s infinite;}
-@keyframes rspulse{0%{box-shadow:0 0 0 0 ${C.red}88;}70%{box-shadow:0 0 0 7px ${C.red}00;}100%{box-shadow:0 0 0 0 ${C.red}00;}}
+.rs-pulse{--pc:${C.red};width:7px;height:7px;border-radius:50%;background:var(--pc);
+  box-shadow:0 0 0 0 var(--pc);animation:rspulse 2s infinite;}
+@keyframes rspulse{0%{box-shadow:0 0 0 0 var(--pc);}70%{box-shadow:0 0 0 7px transparent;}100%{box-shadow:0 0 0 0 transparent;}}
 
 .rs-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
 .rs-kpi{position:relative;background:${C.panel};border:1px solid ${C.line};
