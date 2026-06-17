@@ -7,8 +7,9 @@ import {
   ShieldAlert, Skull, Activity, GitBranch, Lock, KeyRound,
   Crosshair, Building2, Banknote, Radar, AlertTriangle,
   ExternalLink, FileText, Search, X, Target,
-  Plus, Check, ArrowLeftRight, History,
+  Plus, Check, ArrowLeftRight, History, Rss, Bug, RefreshCw,
 } from "lucide-react";
+import { WORKER_URL } from "./config.js";
 
 /* ------------------------------------------------------------------ *
  * RANSOMSCOPE — Threat Actor Intelligence Console
@@ -1112,6 +1113,130 @@ function OriginsStrip() {
   );
 }
 
+/* ----------------------------- Live feed --------------------------- */
+
+function LiveFeed() {
+  const [s, setS] = useState({ loading: true, error: null, data: null, updated: null });
+
+  const load = () => {
+    if (!WORKER_URL) {
+      setS({ loading: false, error: null, data: null, updated: null });
+      return;
+    }
+    setS((p) => ({ ...p, loading: true, error: null }));
+    fetch(WORKER_URL)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((d) => {
+        if (d.status !== "success") throw new Error(d.message || "feed error");
+        setS({ loading: false, error: null, data: d.data, updated: d.lastUpdated });
+      })
+      .catch((e) => setS({ loading: false, error: e.message, data: null, updated: null }));
+  };
+
+  useEffect(() => { load(); }, []);
+
+  // Not configured yet — show a setup hint instead of a broken section.
+  if (!WORKER_URL) {
+    return (
+      <section className="rs-card rs-live">
+        <div className="rs-card-h"><Rss size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> LIVE THREAT FEED</div>
+        <div className="rs-live-setup">
+          Not connected yet. Deploy the Cloudflare Worker in <code>worker/</code>, then paste its
+          URL into <code>src/config.js</code> and push. See <code>worker/README.md</code> for steps.
+        </div>
+      </section>
+    );
+  }
+
+  const vulns = s.data?.vulnerabilities || [];
+  const malware = s.data?.malwareSamples || [];
+
+  return (
+    <section className="rs-card rs-live">
+      <div className="rs-card-h rs-th">
+        <span><Rss size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> LIVE THREAT FEED</span>
+        <div className="rs-live-meta">
+          {s.updated && !s.error && (
+            <span className="rs-live-updated">
+              updated {new Date(s.updated).toLocaleString()}
+            </span>
+          )}
+          <button className="rs-live-refresh" onClick={load} disabled={s.loading}
+            title="Refresh" aria-label="Refresh live feed">
+            <RefreshCw size={13} className={s.loading ? "rs-spin" : ""} />
+          </button>
+        </div>
+      </div>
+
+      {s.loading && (
+        <div className="rs-live-state">📡 Connecting to live intelligence feeds…</div>
+      )}
+      {s.error && !s.loading && (
+        <div className="rs-live-state rs-live-err">
+          ⚠️ Could not load live data: {s.error}{" "}
+          <button className="rs-filter" onClick={load}>RETRY</button>
+        </div>
+      )}
+
+      {!s.loading && !s.error && (
+        <div className="rs-live-grid">
+          <div className="rs-live-col">
+            <div className="rs-live-h"><AlertTriangle size={13} /> Ransomware-linked CVEs <span className="rs-live-src">CISA KEV</span></div>
+            {vulns.length === 0 ? (
+              <div className="rs-live-empty">No items returned.</div>
+            ) : vulns.map((v) => (
+              <a key={v.cve} className="rs-live-item"
+                href={`https://nvd.nist.gov/vuln/detail/${v.cve}`}
+                target="_blank" rel="noopener noreferrer">
+                <div className="rs-live-item-top">
+                  <span className="rs-live-cve">{v.cve}</span>
+                  <span className="rs-live-date">{v.dateAdded}</span>
+                </div>
+                <div className="rs-live-item-sub">
+                  <strong>{v.vendor} {v.product}</strong> — {v.name}
+                </div>
+              </a>
+            ))}
+          </div>
+
+          <div className="rs-live-col">
+            <div className="rs-live-h"><Bug size={13} /> Recent malware samples <span className="rs-live-src">MalwareBazaar</span></div>
+            {malware.length === 0 ? (
+              <div className="rs-live-empty">No items returned.</div>
+            ) : malware.map((m) => (
+              <a key={m.hash} className="rs-live-item"
+                href={`https://bazaar.abuse.ch/sample/${m.hash}/`}
+                target="_blank" rel="noopener noreferrer">
+                <div className="rs-live-item-top">
+                  <span className="rs-live-sig">{m.signature}</span>
+                  <span className="rs-live-date">{m.fileType}</span>
+                </div>
+                <div className="rs-live-item-sub rs-live-hash">{m.hash.slice(0, 24)}…</div>
+                {m.tags?.length > 0 && (
+                  <div className="rs-chiprow" style={{ marginTop: 5 }}>
+                    {m.tags.slice(0, 4).map((t) => (
+                      <span key={t} className="rs-chip"
+                        style={{ color: C.muted, borderColor: C.line, background: C.panel, fontSize: 10 }}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="rs-card-note">
+        Live, unverified machine feeds — distinct from the curated intelligence above. Sources: CISA KEV · MalwareBazaar (abuse.ch).
+      </div>
+    </section>
+  );
+}
+
 /* ------------------------------ App -------------------------------- */
 
 export default function RansomScope() {
@@ -1447,6 +1572,9 @@ export default function RansomScope() {
         </ChartCard>
       </section>
 
+      {/* live feed (Cloudflare Worker proxy) */}
+      <LiveFeed />
+
       <footer className="rs-footer">
         <span>SOURCES — GuidePoint/GRIT · Check Point Research · CISA/FBI advisories · Chainalysis · DOJ &amp; Europol · vendor IR reporting.</span>
         <span>Figures are reported/approximate and compiled for educational use. Not operational intelligence.</span>
@@ -1644,6 +1772,39 @@ a.rs-chip{text-decoration:none;}
   border-radius:5px;padding:2px 6px;font-family:ui-monospace,monospace;}
 .rs-attack-name{font-size:11.5px;color:${C.violet};padding-right:4px;}
 
+/* live feed */
+.rs-live-setup{font-size:12.5px;color:${C.muted};line-height:1.6;}
+.rs-live-setup code{background:${C.panel2};border:1px solid ${C.line};border-radius:4px;
+  padding:1px 5px;font-size:11.5px;color:${C.cyan};}
+.rs-live-meta{display:flex;align-items:center;gap:10px;}
+.rs-live-updated{font-size:10.5px;color:${C.faint};font-family:ui-monospace,monospace;
+  text-transform:none;letter-spacing:0;}
+.rs-live-refresh{background:none;border:1px solid ${C.line};border-radius:6px;color:${C.muted};
+  cursor:pointer;padding:4px 6px;display:grid;place-items:center;}
+.rs-live-refresh:hover:not(:disabled){color:${C.cyan};border-color:${C.cyan}55;}
+.rs-live-refresh:disabled{opacity:0.5;cursor:default;}
+.rs-spin{animation:rsspin 0.8s linear infinite;}
+@keyframes rsspin{to{transform:rotate(360deg);}}
+.rs-live-state{font-size:12.5px;color:${C.muted};padding:14px 4px;font-family:ui-monospace,monospace;}
+.rs-live-err{color:${C.amber};display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.rs-live-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.rs-live-h{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:${C.text};
+  margin-bottom:9px;font-family:ui-monospace,monospace;}
+.rs-live-h svg{color:${C.cyan};}
+.rs-live-src{margin-left:auto;font-size:9.5px;color:${C.faint};border:1px solid ${C.line};
+  border-radius:20px;padding:1px 8px;font-weight:500;letter-spacing:0.4px;}
+.rs-live-item{display:block;text-decoration:none;background:${C.panel2};border:1px solid ${C.lineSoft};
+  border-radius:8px;padding:9px 11px;margin-bottom:6px;transition:border-color .14s;}
+.rs-live-item:hover{border-color:${C.cyan}55;}
+.rs-live-item-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.rs-live-cve{font-size:12.5px;font-weight:700;color:${C.red};font-family:ui-monospace,monospace;}
+.rs-live-sig{font-size:12.5px;font-weight:700;color:${C.violet};}
+.rs-live-date{font-size:10px;color:${C.faint};font-family:ui-monospace,monospace;white-space:nowrap;}
+.rs-live-item-sub{font-size:11.5px;color:${C.muted};margin-top:3px;line-height:1.4;}
+.rs-live-item-sub strong{color:#CDD4E0;font-weight:600;}
+.rs-live-hash{font-family:ui-monospace,monospace;color:${C.faint};word-break:break-all;}
+.rs-live-empty{font-size:11.5px;color:${C.faint};font-style:italic;padding:6px 2px;}
+
 /* comparison table */
 .rs-compare{margin-top:0;}
 .rs-cmp-scroll{overflow-x:auto;margin:0 -4px;padding:0 4px;}
@@ -1669,6 +1830,7 @@ a.rs-chip{text-decoration:none;}
   .rs-kpis{grid-template-columns:1fr 1fr;}
   .rs-main{grid-template-columns:1fr;}
   .rs-charts{grid-template-columns:1fr;}
+  .rs-live-grid{grid-template-columns:1fr;}
   .rs-detail-grid{grid-template-columns:1fr;}
   .rs-roster-list{max-height:none;}
 }

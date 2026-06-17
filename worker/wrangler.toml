@@ -1,0 +1,10 @@
+# Cloudflare Worker config for the RansomScope live-feed proxy.
+# Deploy with:  npx wrangler deploy   (run `npx wrangler login` first)
+name = "ransomscope-proxy"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+# Optional: AlienVault OTX threat-actor pulses. Without a key this source is
+# simply skipped. Set it (never commit it) with:
+#   npx wrangler secret put OTX_API_KEY
+# [vars] is for NON-secret values only — leave API keys out of this file.
