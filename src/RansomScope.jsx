@@ -7,7 +7,7 @@ import {
   ShieldAlert, Skull, Activity, GitBranch, Lock, KeyRound,
   Crosshair, Building2, Banknote, Radar, AlertTriangle,
   ExternalLink, FileText, Search, X, Target,
-  Plus, Check, ArrowLeftRight,
+  Plus, Check, ArrowLeftRight, History,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ *
@@ -414,6 +414,59 @@ const GROWTH_DATA = [
   { year: "2024", v: 85 },
   { year: "2025", v: 124 },
 ];
+
+// Pre-2018 origins — milestone-based (evenly spaced, not linearly time-scaled).
+const ERAS = ["Cryptovirology", "Early crypto", "Bitcoin era", "Worm era", "RaaS dawn"];
+const ERA_COLOR = {
+  "Cryptovirology": C.violet,
+  "Early crypto": C.slate,
+  "Bitcoin era": C.cyan,
+  "Worm era": C.red,
+  "RaaS dawn": C.amber,
+};
+const ORIGINS = [
+  {
+    id: "aids", year: "1989", name: "AIDS Trojan", era: "Cryptovirology",
+    blurb: "The first known ransomware. Biologist Joseph Popp mailed 20,000 infected floppy disks to attendees of a WHO AIDS conference. After 90 reboots it hid directories and scrambled file names, demanding $189 sent to a PO box in Panama. The symmetric encryption was reversed quickly — but the extortion blueprint was set.",
+    ref: { label: "Wikipedia: AIDS (Trojan horse)", url: "https://en.wikipedia.org/wiki/AIDS_(Trojan_horse)" },
+  },
+  {
+    id: "cryptovirology", year: "1996", name: "Cryptoviral Extortion", era: "Cryptovirology",
+    blurb: "Columbia researchers Adam Young and Moti Yung formalized 'cryptoviral extortion' — using public-key cryptography so that only the attacker holds the decryption key. The paper described modern ransomware years before it was practical, and named the field cryptovirology.",
+    ref: { label: "Wikipedia: Cryptovirology", url: "https://en.wikipedia.org/wiki/Cryptovirology" },
+  },
+  {
+    id: "gpcode", year: "2005", name: "GPCode / Archiveus", era: "Early crypto",
+    blurb: "GPCode (a.k.a. PGPCoder) and Archiveus brought the theory to life, encrypting victims' files with RSA keys and demanding payment. Early keys were short enough to break, but it marked the decisive shift from merely hiding files to genuinely encrypting them.",
+    ref: { label: "Wikipedia: PGPCoder", url: "https://en.wikipedia.org/wiki/PGPCoder" },
+  },
+  {
+    id: "cryptolocker", year: "2013", name: "CryptoLocker", era: "Bitcoin era",
+    blurb: "The watershed. CryptoLocker paired RSA-2048 encryption with Bitcoin ransoms and the Gameover Zeus botnet for distribution, extorting millions. It proved the model was massively profitable — and was only stopped by the international Operation Tovar takedown in 2014.",
+    ref: { label: "Wikipedia: CryptoLocker", url: "https://en.wikipedia.org/wiki/CryptoLocker" },
+  },
+  {
+    id: "keranger", year: "2016", name: "Locky · Cerber · KeRanger", era: "Bitcoin era",
+    blurb: "Ransomware went industrial and cross-platform: Locky's mass spam campaigns, Cerber pioneering the Ransomware-as-a-Service affiliate model, and KeRanger — the first ransomware to successfully infect Apple's macOS.",
+    ref: { label: "Wikipedia: KeRanger", url: "https://en.wikipedia.org/wiki/KeRanger" },
+  },
+  {
+    id: "wannacry", year: "2017", name: "WannaCry", era: "Worm era",
+    blurb: "WannaCry weaponized the leaked NSA 'EternalBlue' exploit to self-propagate, hitting 200,000+ machines across 150 countries in days and crippling the UK's NHS. A researcher's accidental kill-switch halted it; it was later attributed to North Korea.",
+    ref: { label: "Wikipedia: WannaCry ransomware attack", url: "https://en.wikipedia.org/wiki/WannaCry_ransomware_attack" },
+  },
+  {
+    id: "notpetya", year: "2017", name: "NotPetya", era: "Worm era",
+    blurb: "Weeks later, NotPetya posed as ransomware but was a destructive wiper — recovery was impossible by design. Spread via a hijacked Ukrainian tax-software update, it caused an estimated $10B in global damage (Maersk, Merck, Mondelēz) and was attributed to Russia's Sandworm.",
+    ref: { label: "Wikipedia: Petya and NotPetya", url: "https://en.wikipedia.org/wiki/Petya_and_NotPetya" },
+  },
+  {
+    id: "ryuk", year: "2018", name: "SamSam · Ryuk", era: "RaaS dawn",
+    blurb: "Attackers pivoted to 'big-game hunting' — fewer targets, far bigger payouts. SamSam paralyzed the City of Atlanta, and Ryuk paired with banking-trojan botnets to demand six- and seven-figure ransoms. The stage was set for the RaaS explosion charted below.",
+    ref: { label: "Wikipedia: Ryuk (ransomware)", url: "https://en.wikipedia.org/wiki/Ryuk_(ransomware)" },
+  },
+];
+const ORIGIN_BY_ID = Object.fromEntries(ORIGINS.map((m) => [m.id, m]));
 
 /* ----------------------------- UI bits ----------------------------- */
 
@@ -990,6 +1043,75 @@ function chartTooltip({ active, payload, label }) {
   );
 }
 
+/* --------------------------- Origins strip ------------------------- */
+
+function OriginsStrip() {
+  const [sel, setSel] = useState("aids");
+  const m = ORIGIN_BY_ID[sel];
+  return (
+    <section className="rs-card rs-origins">
+      <div className="rs-card-h rs-th">
+        <span>
+          <History size={14} strokeWidth={2.2} style={{ color: C.cyan }} />{" "}
+          ORIGINS — 35 YEARS OF RANSOMWARE
+        </span>
+        <div className="rs-legend">
+          {ERAS.map((e) => (
+            <span key={e}><i style={{ background: ERA_COLOR[e] }} /> {e}</span>
+          ))}
+        </div>
+      </div>
+      <div className="rs-hint">
+        From the 1989 AIDS Trojan to the dawn of Ransomware-as-a-Service. Click a milestone — the modern RaaS era continues below.
+      </div>
+      <div className="rs-mile-track">
+        <div className="rs-mile-line" />
+        {ORIGINS.map((o) => {
+          const on = sel === o.id;
+          return (
+            <button
+              key={o.id}
+              className={"rs-mile" + (on ? " on" : "")}
+              onClick={() => setSel(o.id)}
+            >
+              <span
+                className="rs-mile-dot"
+                style={{
+                  background: ERA_COLOR[o.era],
+                  boxShadow: on ? `0 0 0 4px ${C.cyan}33` : "none",
+                  borderColor: on ? C.cyan : C.ink,
+                }}
+              />
+              <span className="rs-mile-year">{o.year}</span>
+              <span className="rs-mile-name">{o.name}</span>
+            </button>
+          );
+        })}
+        <span className="rs-mile-end">2018+ →</span>
+      </div>
+      <div className="rs-mile-detail">
+        <div className="rs-mile-detail-h">
+          <span className="rs-mile-detail-year" style={{ color: ERA_COLOR[m.era] }}>{m.year}</span>
+          <span className="rs-mile-detail-name">{m.name}</span>
+          <span
+            className="rs-mile-era"
+            style={{
+              color: ERA_COLOR[m.era], borderColor: ERA_COLOR[m.era] + "55",
+              background: ERA_COLOR[m.era] + "16",
+            }}
+          >
+            {m.era}
+          </span>
+        </div>
+        <p className="rs-mile-blurb">{m.blurb}</p>
+        <Chip tone="cyan" href={m.ref.url}>
+          <ExternalLink size={10} style={{ marginRight: 5, opacity: 0.85 }} />{m.ref.label}
+        </Chip>
+      </div>
+    </section>
+  );
+}
+
 /* ------------------------------ App -------------------------------- */
 
 export default function RansomScope() {
@@ -1101,6 +1223,9 @@ export default function RansomScope() {
           </div>
         ))}
       </section>
+
+      {/* origins (pre-2018) */}
+      <OriginsStrip />
 
       {/* timeline */}
       <section className="rs-card rs-timeline-card">
@@ -1473,6 +1598,31 @@ const css = `
 .rs-facet-clear:hover{color:${C.red};border-color:${C.red};}
 
 a.rs-chip{text-decoration:none;}
+
+/* origins milestone strip */
+.rs-mile-track{position:relative;display:flex;gap:6px;align-items:flex-start;
+  overflow-x:auto;padding:14px 2px 6px;margin-bottom:6px;}
+.rs-mile-line{position:absolute;left:8px;right:8px;top:21px;height:2px;
+  background:linear-gradient(90deg,${C.violet}55,${C.slate}55,${C.cyan}55,${C.red}55,${C.amber}55);}
+.rs-mile{position:relative;flex:1 0 auto;min-width:84px;display:flex;flex-direction:column;
+  align-items:center;gap:5px;background:none;border:none;cursor:pointer;padding:0 4px;
+  text-align:center;z-index:1;}
+.rs-mile-dot{width:15px;height:15px;border-radius:50%;border:2px solid ${C.ink};
+  transition:box-shadow .14s;}
+.rs-mile-year{font-size:11px;font-weight:700;color:${C.text};font-family:ui-monospace,monospace;}
+.rs-mile-name{font-size:10.5px;color:${C.muted};line-height:1.3;max-width:108px;}
+.rs-mile:hover .rs-mile-name{color:${C.text};}
+.rs-mile.on .rs-mile-name{color:${C.cyan};}
+.rs-mile-end{flex:none;align-self:center;font-size:11px;color:${C.faint};
+  font-family:ui-monospace,monospace;padding-left:6px;white-space:nowrap;}
+.rs-mile-detail{background:${C.panel2};border:1px solid ${C.line};border-radius:11px;
+  padding:14px 16px;margin-top:8px;}
+.rs-mile-detail-h{display:flex;align-items:center;gap:11px;flex-wrap:wrap;}
+.rs-mile-detail-year{font-size:18px;font-weight:800;font-family:ui-monospace,monospace;}
+.rs-mile-detail-name{font-size:16px;font-weight:700;color:${C.text};}
+.rs-mile-era{font-size:10px;letter-spacing:0.8px;text-transform:uppercase;border:1px solid;
+  border-radius:6px;padding:2px 8px;font-family:ui-monospace,monospace;}
+.rs-mile-blurb{margin:10px 0 12px;font-size:13px;line-height:1.6;color:#CDD4E0;}
 
 /* view toggle (timeline / lineage) */
 .rs-th-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
