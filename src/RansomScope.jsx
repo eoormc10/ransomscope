@@ -6,7 +6,7 @@ import {
 import {
   ShieldAlert, Skull, Activity, GitBranch, Lock, KeyRound,
   Crosshair, Building2, Banknote, Radar, AlertTriangle,
-  ExternalLink, FileText, Search, X,
+  ExternalLink, FileText, Search, X, Target,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ *
@@ -310,6 +310,49 @@ const VICTIM_LINKS = {
   "Synnovis (NHS pathology)": "https://www.england.nhs.uk/london/synnovis-ransomware-cyber-attack/",
 };
 
+// MITRE ATT&CK technique catalog (ids → names).
+const ATTACK = {
+  "T1190": "Exploit Public-Facing Application",
+  "T1566": "Phishing",
+  "T1078": "Valid Accounts",
+  "T1133": "External Remote Services",
+  "T1021.001": "Remote Desktop Protocol",
+  "T1195.002": "Compromise Software Supply Chain",
+  "T1189": "Drive-by Compromise",
+  "T1656": "Impersonation",
+  "T1486": "Data Encrypted for Impact",
+  "T1490": "Inhibit System Recovery",
+  "T1567.002": "Exfiltration to Cloud Storage",
+};
+
+// Map each normalized initial-access tag to its ATT&CK technique(s).
+const TAG_TO_ATTACK = {
+  "Exploited public apps": ["T1190"],
+  "File-transfer zero-days": ["T1190"],
+  "Phishing": ["T1566"],
+  "Stolen / VPN credentials": ["T1078", "T1133"],
+  "RDP / valid accounts": ["T1021.001"],
+  "Social engineering": ["T1656"],
+  "Supply chain": ["T1195.002"],
+  "Exploit kits": ["T1189"],
+};
+
+// Derive a group's ATT&CK techniques: initial-access (from tags) + impact.
+function attackFor(g) {
+  const ids = new Set();
+  (TAGS[g.id] || []).forEach((t) =>
+    (TAG_TO_ATTACK[t] || []).forEach((id) => ids.add(id))
+  );
+  ids.add("T1486"); // Data Encrypted for Impact — definitional for ransomware
+  ids.add("T1490"); // Inhibit System Recovery — near-universal
+  if (g.id !== "gandcrab") ids.add("T1567.002"); // double-extortion exfil (post-2019 norm)
+  return [...ids].map((id) => ({
+    id,
+    name: ATTACK[id],
+    url: `https://attack.mitre.org/techniques/${id.replace(".", "/")}/`,
+  }));
+}
+
 // Free-text search across a group's notable fields + technique tags.
 function matchesQuery(g, q) {
   const needle = q.trim().toLowerCase();
@@ -330,6 +373,7 @@ function readHashState() {
     status: h.get("status"),
     q: h.get("q"),
     access: h.get("access"),
+    view: h.get("view"),
   };
 }
 
@@ -548,6 +592,135 @@ function LineageTimeline({ groups, selected, onSelect, matchIds, filtering }) {
   );
 }
 
+/* ------------------------- Lineage graph --------------------------- */
+
+// Layered DAG layout: x = generation (longest path from a root), y = stacked.
+function lineageLayout() {
+  const depth = {};
+  const resolve = (id, seen) => {
+    if (depth[id] != null) return depth[id];
+    if (seen.has(id)) return 0;
+    seen.add(id);
+    const g = GROUP_BY_ID[id];
+    const ps = g.parents.filter((p) => GROUP_BY_ID[p]);
+    const v = ps.length ? 1 + Math.max(...ps.map((p) => resolve(p, seen))) : 0;
+    return (depth[id] = v);
+  };
+  GROUPS.forEach((g) => resolve(g.id, new Set()));
+
+  const connected = GROUPS.filter((g) => g.parents.length || g.children.length);
+  const isolated = GROUPS.filter((g) => !g.parents.length && !g.children.length);
+
+  const NW = 124, NH = 34, COLX = 158, ROWY = 52, X0 = 14, Y0 = 38;
+  const cols = {};
+  connected.forEach((g) => (cols[depth[g.id]] = cols[depth[g.id]] || []).push(g));
+  Object.values(cols).forEach((c) => c.sort((a, b) => a.start - b.start));
+
+  const pos = {};
+  Object.entries(cols).forEach(([d, list]) =>
+    list.forEach((g, i) => {
+      pos[g.id] = { x: X0 + Number(d) * COLX, y: Y0 + i * ROWY };
+    })
+  );
+
+  const maxCol = Math.max(...connected.map((g) => depth[g.id]), 0);
+  const maxRows = Math.max(...Object.values(cols).map((c) => c.length), 1);
+  const connectedBottom = Y0 + maxRows * ROWY;
+
+  // Isolated nodes go in a labeled strip beneath the tree.
+  const isoY = connectedBottom + 30;
+  isolated.forEach((g, i) => {
+    pos[g.id] = { x: X0 + i * COLX, y: isoY };
+  });
+
+  const edges = [];
+  connected.forEach((g) =>
+    g.children.forEach((cid) => {
+      if (pos[cid]) edges.push({ from: g.id, to: cid });
+    })
+  );
+
+  const width = X0 + maxCol * COLX + NW + 16;
+  const height = isoY + (isolated.length ? NH + 16 : 0);
+  return { pos, edges, connected, isolated, NW, NH, width, height, isoY, X0 };
+}
+
+const LINEAGE = lineageLayout();
+
+function LineageGraph({ selected, onSelect, matchIds, filtering }) {
+  const { pos, edges, connected, isolated, NW, NH, width, height, isoY, X0 } = LINEAGE;
+
+  const node = (g) => {
+    const p = pos[g.id];
+    const isSel = selected === g.id;
+    const dim = filtering && matchIds && !matchIds.has(g.id);
+    const col = STATUS[g.status].color;
+    return (
+      <g
+        key={g.id}
+        onClick={() => onSelect(g.id)}
+        style={{ cursor: "pointer" }}
+        opacity={dim ? 0.18 : 1}
+      >
+        <title>{`${g.name} — ${STATUS[g.status].label}`}</title>
+        <rect
+          x={p.x} y={p.y} width={NW} height={NH} rx={8}
+          fill={isSel ? col + "26" : C.panel2}
+          stroke={isSel ? C.cyan : col + "99"} strokeWidth={isSel ? 2 : 1.3}
+        />
+        <circle cx={p.x + 13} cy={p.y + NH / 2} r={4} fill={col} />
+        <text
+          x={p.x + 24} y={p.y + NH / 2 + 4}
+          fill={isSel ? C.cyan : C.text} fontSize="12"
+          fontFamily="ui-monospace, monospace" fontWeight={isSel ? 700 : 500}
+        >
+          {g.name}
+        </text>
+      </g>
+    );
+  };
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      width="100%"
+      role="img"
+      aria-label="Ransomware group lineage graph"
+      style={{ display: "block" }}
+    >
+      {/* edges parent -> child */}
+      {edges.map((e, i) => {
+        const a = pos[e.from], b = pos[e.to];
+        const x1 = a.x + NW, y1 = a.y + NH / 2;
+        const x2 = b.x, y2 = b.y + NH / 2;
+        const mx = (x1 + x2) / 2;
+        const on = selected && (e.from === selected || e.to === selected);
+        return (
+          <path
+            key={i}
+            d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
+            fill="none"
+            stroke={on ? C.cyan : C.faint}
+            strokeWidth={on ? 2 : 1.2}
+            opacity={on ? 0.95 : 0.4}
+            markerEnd=""
+          />
+        );
+      })}
+      {connected.map(node)}
+      {isolated.length > 0 && (
+        <text
+          x={X0} y={isoY - 10} fill={C.faint} fontSize="10.5"
+          fontFamily="ui-monospace, monospace" letterSpacing="0.5"
+        >
+          INDEPENDENT · NO KNOWN LINEAGE
+        </text>
+      )}
+      {isolated.map(node)}
+    </svg>
+  );
+}
+
 /* --------------------------- Detail panel -------------------------- */
 
 function Field({ icon: Icon, label, children, wide }) {
@@ -644,6 +817,23 @@ function DetailPanel({ group, onSelect }) {
             </div>
           </Field>
         )}
+        <Field icon={Target} label="MITRE ATT&CK TECHNIQUES" wide>
+          <div className="rs-chiprow">
+            {attackFor(group).map((t) => (
+              <a
+                key={t.id}
+                className="rs-attack"
+                href={t.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`${t.id} · ${t.name}`}
+              >
+                <span className="rs-attack-id">{t.id}</span>
+                <span className="rs-attack-name">{t.name}</span>
+              </a>
+            ))}
+          </div>
+        </Field>
         {REFS[group.id]?.length > 0 && (
           <Field icon={FileText} label="SOURCES / FURTHER READING" wide>
             <div className="rs-chiprow">
@@ -701,6 +891,7 @@ export default function RansomScope() {
   const [facet, setFacet] = useState(
     ACCESS_TAGS.includes(init.access) ? init.access : null
   );
+  const [view, setView] = useState(init.view === "lineage" ? "lineage" : "timeline");
 
   // Write current state to the URL hash (replaceState → no history spam).
   useEffect(() => {
@@ -709,6 +900,7 @@ export default function RansomScope() {
     if (filter !== "all") p.set("status", filter);
     if (query.trim()) p.set("q", query.trim());
     if (facet) p.set("access", facet);
+    if (view !== "timeline") p.set("view", view);
     const qs = p.toString();
     const newHash = qs ? "#" + qs : "";
     if (newHash !== window.location.hash) {
@@ -716,7 +908,7 @@ export default function RansomScope() {
         null, "", window.location.pathname + window.location.search + newHash
       );
     }
-  }, [selected, filter, query, facet]);
+  }, [selected, filter, query, facet, view]);
 
   // Respond to manual hash edits / back-forward navigation.
   useEffect(() => {
@@ -726,6 +918,7 @@ export default function RansomScope() {
       setFilter(["active", "disrupted", "defunct"].includes(s.status) ? s.status : "all");
       setQuery(s.q || "");
       setFacet(ACCESS_TAGS.includes(s.access) ? s.access : null);
+      setView(s.view === "lineage" ? "lineage" : "timeline");
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -789,14 +982,33 @@ export default function RansomScope() {
       <section className="rs-card rs-timeline-card">
         <div className="rs-card-h rs-th">
           <span><Activity size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> EVOLUTION &amp; LINEAGE — 2018 to present</span>
-          <div className="rs-legend">
-            <span><i style={{ background: C.red }} /> Active</span>
-            <span><i style={{ background: C.amber }} /> Disrupted</span>
-            <span><i style={{ background: C.slate }} /> Defunct</span>
-            <span className="rs-legend-dash"><i /> Lineage / takedown</span>
+          <div className="rs-th-right">
+            <div className="rs-viewtoggle">
+              <button
+                className={"rs-vt" + (view === "timeline" ? " on" : "")}
+                onClick={() => setView("timeline")}
+              >
+                <Activity size={12} /> Timeline
+              </button>
+              <button
+                className={"rs-vt" + (view === "lineage" ? " on" : "")}
+                onClick={() => setView("lineage")}
+              >
+                <GitBranch size={12} /> Lineage
+              </button>
+            </div>
+            <div className="rs-legend">
+              <span><i style={{ background: C.red }} /> Active</span>
+              <span><i style={{ background: C.amber }} /> Disrupted</span>
+              <span><i style={{ background: C.slate }} /> Defunct</span>
+            </div>
           </div>
         </div>
-        <div className="rs-hint">Click a group to trace its ancestry — dashed lines mark rebrands and where affiliates fled after takedowns.</div>
+        <div className="rs-hint">
+          {view === "timeline"
+            ? "Click a group to trace its ancestry — dashed lines mark rebrands and where affiliates fled after takedowns."
+            : "Family tree of rebrands and affiliate spin-offs. Arrows point parent → successor; columns are generations. Click any node."}
+        </div>
         <div className="rs-facetbar">
           <span className="rs-facetbar-label"><KeyRound size={12} /> HIGHLIGHT BY INITIAL ACCESS</span>
           {ACCESS_TAGS.map((t) => {
@@ -818,13 +1030,22 @@ export default function RansomScope() {
             </button>
           )}
         </div>
-        <LineageTimeline
-          groups={GROUPS}
-          selected={selected}
-          onSelect={setSelected}
-          matchIds={filteredIds}
-          filtering={filtering}
-        />
+        {view === "timeline" ? (
+          <LineageTimeline
+            groups={GROUPS}
+            selected={selected}
+            onSelect={setSelected}
+            matchIds={filteredIds}
+            filtering={filtering}
+          />
+        ) : (
+          <LineageGraph
+            selected={selected}
+            onSelect={setSelected}
+            matchIds={filteredIds}
+            filtering={filtering}
+          />
+        )}
       </section>
 
       {/* roster + detail */}
@@ -1096,6 +1317,26 @@ const css = `
 .rs-facet-clear:hover{color:${C.red};border-color:${C.red};}
 
 a.rs-chip{text-decoration:none;}
+
+/* view toggle (timeline / lineage) */
+.rs-th-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.rs-viewtoggle{display:inline-flex;background:${C.panel2};border:1px solid ${C.line};
+  border-radius:8px;padding:2px;gap:2px;}
+.rs-vt{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;letter-spacing:0.5px;
+  padding:4px 10px;border-radius:6px;border:none;background:transparent;color:${C.muted};
+  cursor:pointer;font-family:ui-monospace,monospace;text-transform:uppercase;transition:all .14s;}
+.rs-vt:hover{color:${C.text};}
+.rs-vt.on{background:${C.cyan}16;color:${C.cyan};}
+.rs-vt svg{flex:none;}
+
+/* MITRE ATT&CK technique chips */
+.rs-attack{display:inline-flex;align-items:center;gap:7px;text-decoration:none;
+  border:1px solid ${C.violet}44;background:${C.violet}12;border-radius:7px;
+  padding:3px 5px 3px 3px;transition:filter .14s;}
+.rs-attack:hover{filter:brightness(1.3);}
+.rs-attack-id{font-size:10.5px;font-weight:700;color:${C.ink};background:${C.violet};
+  border-radius:5px;padding:2px 6px;font-family:ui-monospace,monospace;}
+.rs-attack-name{font-size:11.5px;color:${C.violet};padding-right:4px;}
 
 @media (max-width:880px){
   .rs-kpis{grid-template-columns:1fr 1fr;}
