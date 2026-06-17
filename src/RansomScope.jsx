@@ -32,6 +32,7 @@ const C = {
   slate: "#58647A",   // defunct
   cyan: "#36CFC0",    // data / selection accent
   violet: "#8C7BFF",  // secondary data
+  green: "#34D399",   // live / fresh indicator
 };
 
 const STATUS = {
@@ -1154,6 +1155,11 @@ function LiveFeed() {
 
   const vulns = s.data?.vulnerabilities || [];
   const victims = s.data?.recentVictims || [];
+  const actors = s.data?.threatActors || [];
+
+  // Freshness: green if the feed was compiled recently (within 20 min).
+  const ageMin = s.updated ? (Date.now() - new Date(s.updated).getTime()) / 60000 : Infinity;
+  const fresh = ageMin < 20;
 
   return (
     <section className="rs-card rs-live">
@@ -1161,8 +1167,15 @@ function LiveFeed() {
         <span><Rss size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> LIVE THREAT FEED</span>
         <div className="rs-live-meta">
           {s.updated && !s.error && (
-            <span className="rs-live-updated">
-              updated {new Date(s.updated).toLocaleString()}
+            <span className="rs-live-fresh" style={{ color: fresh ? C.green : C.amber }}>
+              <i
+                className={fresh ? "rs-livedot" : ""}
+                style={{
+                  background: fresh ? C.green : C.amber,
+                  boxShadow: fresh ? `0 0 6px ${C.green}` : "none",
+                }}
+              />
+              compiled {new Date(s.updated).toLocaleString()}
             </span>
           )}
           <button className="rs-live-refresh" onClick={() => load(true)} disabled={s.loading}
@@ -1222,10 +1235,31 @@ function LiveFeed() {
               </a>
             ))}
           </div>
+
+          <div className="rs-live-col">
+            <div className="rs-live-h"><Radar size={13} /> Threat-actor pulses <span className="rs-live-src">AlienVault OTX</span></div>
+            {actors.length === 0 ? (
+              <div className="rs-live-empty">No items returned (subscribe to OTX pulses to populate).</div>
+            ) : actors.map((a, i) => (
+              <a key={(a.id || a.name) + i} className="rs-live-item"
+                href={a.id ? `https://otx.alienvault.com/pulse/${a.id}` : undefined}
+                target="_blank" rel="noopener noreferrer">
+                <div className="rs-live-item-sub">
+                  <strong style={{ color: C.cyan }}>{a.name}</strong>
+                </div>
+                <div className="rs-live-item-top" style={{ marginTop: 4 }}>
+                  <span className="rs-live-date">
+                    {typeof a.indicators === "number" ? `${a.indicators} IOCs` : "OTX pulse"}
+                  </span>
+                  <span className="rs-live-date">{a.modified}</span>
+                </div>
+              </a>
+            ))}
+          </div>
         </div>
       )}
       <div className="rs-card-note">
-        Live, unverified machine feeds — distinct from the curated intelligence above. Sources: CISA KEV · ransomware.live.
+        Live, unverified machine feeds — distinct from the curated intelligence above. Sources: CISA KEV · ransomware.live · AlienVault OTX.
       </div>
     </section>
   );
@@ -1771,8 +1805,11 @@ a.rs-chip{text-decoration:none;}
 .rs-live-setup code{background:${C.panel2};border:1px solid ${C.line};border-radius:4px;
   padding:1px 5px;font-size:11.5px;color:${C.cyan};}
 .rs-live-meta{display:flex;align-items:center;gap:10px;}
-.rs-live-updated{font-size:10.5px;color:${C.faint};font-family:ui-monospace,monospace;
-  text-transform:none;letter-spacing:0;}
+.rs-live-fresh{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;
+  font-family:ui-monospace,monospace;text-transform:none;letter-spacing:0;}
+.rs-live-fresh i{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.rs-livedot{animation:rslivepulse 1.8s infinite;}
+@keyframes rslivepulse{0%{opacity:1;}50%{opacity:0.4;}100%{opacity:1;}}
 .rs-live-refresh{background:none;border:1px solid ${C.line};border-radius:6px;color:${C.muted};
   cursor:pointer;padding:4px 6px;display:grid;place-items:center;}
 .rs-live-refresh:hover:not(:disabled){color:${C.cyan};border-color:${C.cyan}55;}
@@ -1781,7 +1818,7 @@ a.rs-chip{text-decoration:none;}
 @keyframes rsspin{to{transform:rotate(360deg);}}
 .rs-live-state{font-size:12.5px;color:${C.muted};padding:14px 4px;font-family:ui-monospace,monospace;}
 .rs-live-err{color:${C.amber};display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.rs-live-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.rs-live-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
 .rs-live-h{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:${C.text};
   margin-bottom:9px;font-family:ui-monospace,monospace;}
 .rs-live-h svg{color:${C.cyan};}

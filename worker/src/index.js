@@ -124,8 +124,9 @@ async function getOtxPulses(key) {
   if (!res.ok) throw new Error(`OTX ${res.status}`);
   const data = await res.json();
   return (data.results || []).map((p) => ({
+    id: p.id,
     name: p.name,
     indicators: p.indicator_count,
-    modified: p.modified,
+    modified: (p.modified || "").slice(0, 10),
   }));
 }
