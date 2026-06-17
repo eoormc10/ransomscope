@@ -1,7 +1,7 @@
 # RansomScope live-feed proxy (Cloudflare Worker)
 
 A serverless proxy that fetches public threat-intel feeds (CISA KEV +
-MalwareBazaar, plus optional AlienVault OTX) and returns one CORS-enabled
+ransomware.live, plus optional AlienVault OTX) and returns one CORS-enabled
 JSON payload for the static dashboard. Keeps API keys server-side and
 edge-caches responses for 10 minutes.
 
@@ -45,10 +45,10 @@ so it may be empty until you subscribe to some.)
 {
   "status": "success",
   "lastUpdated": "2026-06-17T...Z",
-  "sources": { "vulnerabilities": "ok", "malwareSamples": "ok", "threatActors": "ok" },
+  "sources": { "vulnerabilities": "ok", "recentVictims": "ok", "threatActors": "ok" },
   "data": {
     "vulnerabilities": [{ "cve": "...", "vendor": "...", "product": "...", "name": "...", "dateAdded": "..." }],
-    "malwareSamples":  [{ "hash": "...", "signature": "...", "fileType": "...", "tags": [], "firstSeen": "..." }],
+    "recentVictims":   [{ "victim": "...", "group": "...", "sector": "...", "country": "...", "date": "...", "url": "..." }],
     "threatActors":    [{ "name": "...", "indicators": 0, "modified": "..." }]
   }
 }

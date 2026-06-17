@@ -7,7 +7,7 @@ import {
   ShieldAlert, Skull, Activity, GitBranch, Lock, KeyRound,
   Crosshair, Building2, Banknote, Radar, AlertTriangle,
   ExternalLink, FileText, Search, X, Target,
-  Plus, Check, ArrowLeftRight, History, Rss, Bug, RefreshCw,
+  Plus, Check, ArrowLeftRight, History, Rss, RefreshCw,
 } from "lucide-react";
 import { WORKER_URL } from "./config.js";
 
@@ -1118,13 +1118,14 @@ function OriginsStrip() {
 function LiveFeed() {
   const [s, setS] = useState({ loading: true, error: null, data: null, updated: null });
 
-  const load = () => {
+  const load = (force) => {
     if (!WORKER_URL) {
       setS({ loading: false, error: null, data: null, updated: null });
       return;
     }
     setS((p) => ({ ...p, loading: true, error: null }));
-    fetch(WORKER_URL)
+    const url = force ? WORKER_URL + (WORKER_URL.includes("?") ? "&" : "?") + "nocache=1" : WORKER_URL;
+    fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
@@ -1152,7 +1153,7 @@ function LiveFeed() {
   }
 
   const vulns = s.data?.vulnerabilities || [];
-  const malware = s.data?.malwareSamples || [];
+  const victims = s.data?.recentVictims || [];
 
   return (
     <section className="rs-card rs-live">
@@ -1164,7 +1165,7 @@ function LiveFeed() {
               updated {new Date(s.updated).toLocaleString()}
             </span>
           )}
-          <button className="rs-live-refresh" onClick={load} disabled={s.loading}
+          <button className="rs-live-refresh" onClick={() => load(true)} disabled={s.loading}
             title="Refresh" aria-label="Refresh live feed">
             <RefreshCw size={13} className={s.loading ? "rs-spin" : ""} />
           </button>
@@ -1203,35 +1204,28 @@ function LiveFeed() {
           </div>
 
           <div className="rs-live-col">
-            <div className="rs-live-h"><Bug size={13} /> Recent malware samples <span className="rs-live-src">MalwareBazaar</span></div>
-            {malware.length === 0 ? (
+            <div className="rs-live-h"><Crosshair size={13} /> Recent leak-site victims <span className="rs-live-src">ransomware.live</span></div>
+            {victims.length === 0 ? (
               <div className="rs-live-empty">No items returned.</div>
-            ) : malware.map((m) => (
-              <a key={m.hash} className="rs-live-item"
-                href={`https://bazaar.abuse.ch/sample/${m.hash}/`}
+            ) : victims.map((v, i) => (
+              <a key={(v.url || v.victim) + i} className="rs-live-item"
+                href={v.url || undefined}
                 target="_blank" rel="noopener noreferrer">
                 <div className="rs-live-item-top">
-                  <span className="rs-live-sig">{m.signature}</span>
-                  <span className="rs-live-date">{m.fileType}</span>
+                  <span className="rs-live-sig">{v.victim}</span>
+                  <span className="rs-live-date">{v.date}</span>
                 </div>
-                <div className="rs-live-item-sub rs-live-hash">{m.hash.slice(0, 24)}…</div>
-                {m.tags?.length > 0 && (
-                  <div className="rs-chiprow" style={{ marginTop: 5 }}>
-                    {m.tags.slice(0, 4).map((t) => (
-                      <span key={t} className="rs-chip"
-                        style={{ color: C.muted, borderColor: C.line, background: C.panel, fontSize: 10 }}>
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="rs-live-item-sub">
+                  <strong>{v.group}</strong>
+                  {v.sector ? ` · ${v.sector}` : ""}{v.country ? ` · ${v.country}` : ""}
+                </div>
               </a>
             ))}
           </div>
         </div>
       )}
       <div className="rs-card-note">
-        Live, unverified machine feeds — distinct from the curated intelligence above. Sources: CISA KEV · MalwareBazaar (abuse.ch).
+        Live, unverified machine feeds — distinct from the curated intelligence above. Sources: CISA KEV · ransomware.live.
       </div>
     </section>
   );

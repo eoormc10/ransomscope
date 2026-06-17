@@ -5,9 +5,9 @@
  * payload for the static GitHub Pages frontend. Augments the curated
  * dashboard; it does NOT replace it.
  *
- * Sources:
+ * Sources (all keyless except OTX):
  *   - CISA KEV  (Known Exploited Vulnerabilities) — ransomware-linked CVEs
- *   - MalwareBazaar (abuse.ch) — recent named malware samples
+ *   - ransomware.live — recent ransomware leak-site victims
  *   - AlienVault OTX (optional) — only if OTX_API_KEY secret is set
  *
  * Deliberately omits MITRE enterprise-attack.json: at ~35 MB it blows the
@@ -37,15 +37,19 @@ export default {
       return new Response(null, { status: 204, headers: CORS });
     }
 
-    // Serve from edge cache when warm.
+    // Serve from edge cache when warm (skip with ?nocache, e.g. manual refresh).
+    const url = new URL(request.url);
+    const bypass = url.searchParams.has("nocache");
     const cache = caches.default;
-    const cacheKey = new Request(new URL(request.url).origin + "/feed", { method: "GET" });
-    const cached = await cache.match(cacheKey);
-    if (cached) return cached;
+    const cacheKey = new Request(url.origin + "/feed", { method: "GET" });
+    if (!bypass) {
+      const cached = await cache.match(cacheKey);
+      if (cached) return cached;
+    }
 
-    const [cisa, mb, otx] = await Promise.allSettled([
+    const [cisa, rl, otx] = await Promise.allSettled([
       getCisaRansomwareCves(),
-      getRecentMalware(),
+      getRecentVictims(),
       env.OTX_API_KEY ? getOtxPulses(env.OTX_API_KEY) : Promise.resolve([]),
     ]);
 
@@ -54,12 +58,12 @@ export default {
       lastUpdated: new Date().toISOString(),
       sources: {
         vulnerabilities: cisa.status === "fulfilled" ? "ok" : "error",
-        malwareSamples: mb.status === "fulfilled" ? "ok" : "error",
+        recentVictims: rl.status === "fulfilled" ? "ok" : "error",
         threatActors: otx.status === "fulfilled" ? "ok" : "error",
       },
       data: {
         vulnerabilities: cisa.status === "fulfilled" ? cisa.value : [],
-        malwareSamples: mb.status === "fulfilled" ? mb.value : [],
+        recentVictims: rl.status === "fulfilled" ? rl.value : [],
         threatActors: otx.status === "fulfilled" ? otx.value : [],
       },
     };
@@ -92,25 +96,22 @@ async function getCisaRansomwareCves() {
     }));
 }
 
-// --- MalwareBazaar: recent named samples ----------------------------
-async function getRecentMalware() {
-  const res = await fetch("https://mb-api.abuse.ch/api/v1/", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: "query=get_recent&selector=time",
+// --- ransomware.live: recent leak-site victims ----------------------
+async function getRecentVictims() {
+  const res = await fetch("https://api.ransomware.live/v2/recentvictims", {
+    headers: { "Accept": "application/json" },
   });
-  if (!res.ok) throw new Error(`MalwareBazaar ${res.status}`);
+  if (!res.ok) throw new Error(`ransomware.live ${res.status}`);
   const data = await res.json();
-  if (data.query_status !== "ok") return [];
-  return (data.data || [])
-    .filter((m) => m.signature) // only samples attributed to a named family
-    .slice(0, 8)
-    .map((m) => ({
-      hash: m.sha256_hash,
-      signature: m.signature,
-      fileType: m.file_type || "—",
-      tags: m.tags || [],
-      firstSeen: m.first_seen,
+  return (Array.isArray(data) ? data : [])
+    .slice(0, 10)
+    .map((v) => ({
+      victim: v.victim,
+      group: v.group,
+      sector: v.activity && v.activity !== "Not Found" ? v.activity : "",
+      country: v.country || "",
+      date: (v.attackdate || v.discovered || "").slice(0, 10),
+      url: v.url || "",
     }));
 }
 
