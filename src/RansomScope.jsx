@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Cell, ResponsiveContainer, Tooltip,
   PieChart, Pie,
@@ -6,6 +6,7 @@ import {
 import {
   ShieldAlert, Skull, Activity, GitBranch, Lock, KeyRound,
   Crosshair, Building2, Banknote, Radar, AlertTriangle,
+  ExternalLink, FileText, Search, X,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ *
@@ -199,6 +200,139 @@ const GROUPS = [
 
 const GROUP_BY_ID = Object.fromEntries(GROUPS.map((g) => [g.id, g]));
 
+// Normalized initial-access techniques per group (for faceted filtering).
+const TAGS = {
+  gandcrab:  ["Exploit kits", "Phishing", "RDP / valid accounts"],
+  revil:     ["Supply chain", "Phishing", "Exploited public apps"],
+  darkside:  ["Stolen / VPN credentials", "Phishing"],
+  conti:     ["Phishing", "Exploited public apps", "RDP / valid accounts"],
+  hive:      ["Phishing", "RDP / valid accounts", "Exploited public apps"],
+  clop:      ["File-transfer zero-days", "Exploited public apps"],
+  lockbit:   ["Phishing", "RDP / valid accounts", "Exploited public apps"],
+  blackcat:  ["Stolen / VPN credentials", "Exploited public apps", "Social engineering"],
+  ransomhub: ["Stolen / VPN credentials", "Exploited public apps"],
+  blackbasta:["Phishing", "Social engineering", "Exploited public apps"],
+  play:      ["Exploited public apps", "RDP / valid accounts"],
+  qilin:     ["Stolen / VPN credentials", "Phishing", "Exploited public apps"],
+  akira:     ["Stolen / VPN credentials", "Exploited public apps"],
+  gentlemen: ["Stolen / VPN credentials"],
+};
+
+// Facet vocabulary, ordered by how common it is across the roster.
+const ACCESS_TAGS = [
+  "Exploited public apps", "Phishing", "Stolen / VPN credentials",
+  "RDP / valid accounts", "File-transfer zero-days", "Social engineering",
+  "Supply chain", "Exploit kits",
+];
+
+// Authoritative references per group (verified resolving URLs).
+const REFS = {
+  gandcrab: [
+    { label: "Krebs: Who's Behind GandCrab", url: "https://krebsonsecurity.com/2019/07/whos-behind-the-gandcrab-ransomware/", type: "vendor" },
+    { label: "Europol: GandCrab decryptor", url: "https://www.europol.europa.eu/media-press/newsroom/news/pay-no-more-universal-gandcrab-decryption-tool-released-for-free-no-more-ransom", type: "gov" },
+  ],
+  revil: [
+    { label: "Wikipedia: REvil", url: "https://en.wikipedia.org/wiki/REvil", type: "wiki" },
+    { label: "Europol: REvil affiliates arrested", url: "https://www.europol.europa.eu/newsroom/news/five-affiliates-to-sodinokibi/revil-unplugged", type: "gov" },
+    { label: "DOJ: REvil affiliate sentenced", url: "https://www.justice.gov/usao-ndtx/pr/sodinokibirevil-affiliate-sentenced-role-700m-ransomware-scheme", type: "gov" },
+  ],
+  darkside: [
+    { label: "CISA: DarkSide (AA21-131A)", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-131a", type: "cisa" },
+    { label: "Wikipedia: DarkSide", url: "https://en.wikipedia.org/wiki/DarkSide_(hacker_group)", type: "wiki" },
+    { label: "Krebs: A Closer Look at DarkSide", url: "https://krebsonsecurity.com/2021/05/a-closer-look-at-the-darkside-ransomware-gang/", type: "vendor" },
+  ],
+  conti: [
+    { label: "CISA: Conti Ransomware Advisory", url: "https://www.cisa.gov/news-events/news/cisa-fbi-and-nsa-release-conti-ransomware-advisory-help-organizations-reduce-risk-attack", type: "cisa" },
+    { label: "Wikipedia: Conti", url: "https://en.wikipedia.org/wiki/Conti_(ransomware)", type: "wiki" },
+  ],
+  hive: [
+    { label: "CISA: #StopRansomware Hive (AA22-321A)", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa22-321a", type: "cisa" },
+    { label: "Wikipedia: Hive", url: "https://en.wikipedia.org/wiki/Hive_(ransomware)", type: "wiki" },
+    { label: "DOJ: Hive ransomware disrupted", url: "https://www.justice.gov/usao-mdfl/pr/us-department-justice-disrupts-hive-ransomware-variant", type: "gov" },
+  ],
+  clop: [
+    { label: "CISA: #StopRansomware Cl0p (AA23-158A)", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-158a", type: "cisa" },
+    { label: "Wikipedia: Clop", url: "https://en.wikipedia.org/wiki/Clop_(hacker_group)", type: "wiki" },
+    { label: "Wikipedia: 2023 MOVEit data breach", url: "https://en.wikipedia.org/wiki/2023_MOVEit_data_breach", type: "wiki" },
+  ],
+  lockbit: [
+    { label: "CISA: Understanding LockBit (AA23-165A)", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a", type: "cisa" },
+    { label: "Wikipedia: LockBit", url: "https://en.wikipedia.org/wiki/LockBit", type: "wiki" },
+    { label: "NCA: Operation Cronos", url: "https://www.nationalcrimeagency.gov.uk/the-nca-announces-the-disruption-of-lockbit-with-operation-cronos", type: "gov" },
+    { label: "DOJ: LockBit developer charged", url: "https://www.justice.gov/usao-nj/pr/us-charges-russian-national-developing-and-operating-lockbit-ransomware", type: "gov" },
+  ],
+  blackcat: [
+    { label: "CISA: #StopRansomware ALPHV (AA23-353A)", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-353a", type: "cisa" },
+    { label: "Wikipedia: BlackCat", url: "https://en.wikipedia.org/wiki/BlackCat_(cyber_gang)", type: "wiki" },
+    { label: "Wikipedia: Change Healthcare attack", url: "https://en.wikipedia.org/wiki/2024_Change_Healthcare_ransomware_attack", type: "wiki" },
+  ],
+  ransomhub: [
+    { label: "CISA: #StopRansomware RansomHub (AA24-242A)", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-242a", type: "cisa" },
+    { label: "The Record: RansomHub advisory", url: "https://therecord.media/agencies-warn-against-ransomhub-group", type: "vendor" },
+    { label: "Group-IB: RansomHub profile", url: "https://www.group-ib.com/masked-actors/ransomhub/", type: "vendor" },
+  ],
+  blackbasta: [
+    { label: "CISA: #StopRansomware Black Basta (AA24-131A)", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-131a", type: "cisa" },
+    { label: "GuidePoint: Black Basta leaked chats", url: "https://www.guidepointsecurity.com/blog/breaking-basta-insights-from-black-bastas-leaked-ransomware-chats/", type: "vendor" },
+  ],
+  play: [
+    { label: "CISA: #StopRansomware Play (AA23-352A)", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-352a", type: "cisa" },
+    { label: "Wikipedia: Play", url: "https://en.wikipedia.org/wiki/Play_(hacker_group)", type: "wiki" },
+  ],
+  qilin: [
+    { label: "Wikipedia: Qilin", url: "https://en.wikipedia.org/wiki/Qilin_(cybercrime_group)", type: "wiki" },
+    { label: "HHS HC3: Qilin/Agenda Threat Profile", url: "https://www.hhs.gov/sites/default/files/qilin-threat-profile-tlpclear.pdf", type: "gov" },
+  ],
+  akira: [
+    { label: "CISA: #StopRansomware Akira (AA24-109A)", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-109a", type: "cisa" },
+    { label: "Wikipedia: Akira", url: "https://en.wikipedia.org/wiki/Akira_(ransomware)", type: "wiki" },
+  ],
+  gentlemen: [
+    { label: "Halcyon: The Gentlemen Threat Assessment", url: "https://www.halcyon.ai/ransomware-research-reports/threat-assessment-the-gentlemen-ransomware-group", type: "vendor" },
+    { label: "Analyst1: The Gentlemen Profile", url: "https://analyst1.com/threat-actors/the-gentlemen/", type: "vendor" },
+  ],
+};
+
+// Per-victim incident write-ups (keyed by the exact victim label used above).
+const VICTIM_LINKS = {
+  "Kaseya": "https://en.wikipedia.org/wiki/Kaseya_VSA_ransomware_attack",
+  "JBS Foods": "https://en.wikipedia.org/wiki/JBS_S.A._ransomware_attack",
+  "Colonial Pipeline": "https://en.wikipedia.org/wiki/Colonial_Pipeline_ransomware_attack",
+  "Costa Rica government": "https://en.wikipedia.org/wiki/2022_Costa_Rican_ransomware_attack",
+  "Ireland HSE": "https://en.wikipedia.org/wiki/Health_Service_Executive_ransomware_attack",
+  "MOVEit (600+ orgs)": "https://en.wikipedia.org/wiki/2023_MOVEit_data_breach",
+  "Boeing": "https://cyberscoop.com/boeing-confirms-attempted-200-million-ransomware-extortion-attempt/",
+  "Royal Mail": "https://techcrunch.com/2023/02/23/royal-mail-restores-global-shipping-weeks-after-lockbit-ransomware-attack/",
+  "Change Healthcare": "https://en.wikipedia.org/wiki/2024_Change_Healthcare_ransomware_attack",
+  "MGM Resorts": "https://en.wikipedia.org/wiki/2023_MGM_Resorts_cyberattack",
+  "City of Oakland": "https://en.wikipedia.org/wiki/Play_(hacker_group)",
+  "Rackspace": "https://www.rackspace.com/newsroom/rackspace-technology-hosted-exchange-environment-update",
+  "Synnovis (NHS pathology)": "https://www.england.nhs.uk/london/synnovis-ransomware-cyber-attack/",
+};
+
+// Free-text search across a group's notable fields + technique tags.
+function matchesQuery(g, q) {
+  const needle = q.trim().toLowerCase();
+  if (!needle) return true;
+  const hay = [
+    g.name, g.aka, g.origin, g.summary,
+    ...(g.sectors || []), ...(g.victims || []), ...(TAGS[g.id] || []),
+  ].join(" ").toLowerCase();
+  return hay.includes(needle);
+}
+
+// Read shareable state from the URL hash (#group=…&status=…&q=…&access=…).
+function readHashState() {
+  if (typeof window === "undefined") return {};
+  const h = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
+  return {
+    group: h.get("group"),
+    status: h.get("status"),
+    q: h.get("q"),
+    access: h.get("access"),
+  };
+}
+
 const KPIS = [
   { label: "Named groups in 2025", value: "124", sub: "+46% year-over-year", accent: C.red },
   { label: "Q1 2026 victims posted", value: "2,122", sub: "to data-leak sites", accent: C.amber },
@@ -250,18 +384,32 @@ function StatusBadge({ status, size = "sm" }) {
   );
 }
 
-function Chip({ children, tone = "neutral", onClick, active }) {
+function Chip({ children, tone = "neutral", onClick, active, href }) {
   const map = {
     neutral: { c: C.text, b: C.line, bg: C.panel2 },
     cyan: { c: C.cyan, b: C.cyan + "44", bg: C.cyan + "12" },
     red: { c: C.red, b: C.red + "44", bg: C.red + "12" },
   };
   const m = active ? map.cyan : map[tone];
+  const style = { color: m.c, borderColor: m.b, background: m.bg };
+  if (href) {
+    return (
+      <a
+        className="rs-chip rs-chip-btn"
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={style}
+      >
+        {children}
+      </a>
+    );
+  }
   return (
     <span
       className={"rs-chip" + (onClick ? " rs-chip-btn" : "")}
       onClick={onClick}
-      style={{ color: m.c, borderColor: m.b, background: m.bg }}
+      style={style}
     >
       {children}
     </span>
@@ -270,7 +418,7 @@ function Chip({ children, tone = "neutral", onClick, active }) {
 
 /* --------------------------- Timeline ------------------------------ */
 
-function LineageTimeline({ groups, selected, onSelect }) {
+function LineageTimeline({ groups, selected, onSelect, matchIds, filtering }) {
   const yearMin = 2018, yearMax = 2026.3;
   const VW = 1000;
   const plotX0 = 152, plotX1 = 986;
@@ -350,6 +498,7 @@ function LineageTimeline({ groups, selected, onSelect }) {
         const y = top + i * (rowH + rowGap);
         const isSel = sel === g.id;
         const col = STATUS[g.status].color;
+        const dim = filtering && matchIds && !matchIds.has(g.id);
         return (
           <g
             key={g.id}
@@ -366,13 +515,14 @@ function LineageTimeline({ groups, selected, onSelect }) {
               fill={isSel ? C.cyan : C.text} fontSize="12"
               textAnchor="end" fontFamily="ui-monospace, monospace"
               fontWeight={isSel ? 700 : 500}
+              opacity={dim ? 0.28 : 1}
             >
               {g.name}
             </text>
             {/* bar */}
             <rect
               x={x1} y={y} width={Math.max(x2 - x1, 6)} height={rowH} rx={5}
-              fill={col} opacity={isSel ? 0.95 : 0.7}
+              fill={col} opacity={dim ? 0.12 : isSel ? 0.95 : 0.7}
               stroke={isSel ? C.cyan : "none"} strokeWidth={isSel ? 2 : 0}
             />
             {/* disruption marker */}
@@ -381,14 +531,14 @@ function LineageTimeline({ groups, selected, onSelect }) {
                 x1={xFor(g.disruptAt)} y1={y - 2}
                 x2={xFor(g.disruptAt)} y2={y + rowH + 2}
                 stroke={C.text} strokeWidth={1.5} strokeDasharray="2 2"
-                opacity={0.85}
+                opacity={dim ? 0.2 : 0.85}
               />
             )}
             {/* active arrow */}
             {g.status === "active" && (
               <polygon
                 points={`${x2 + 2},${y + rowH / 2} ${x2 - 5},${y + 4} ${x2 - 5},${y + rowH - 4}`}
-                fill={col} opacity={isSel ? 1 : 0.85}
+                fill={col} opacity={dim ? 0.12 : isSel ? 1 : 0.85}
               />
             )}
           </g>
@@ -400,9 +550,9 @@ function LineageTimeline({ groups, selected, onSelect }) {
 
 /* --------------------------- Detail panel -------------------------- */
 
-function Field({ icon: Icon, label, children }) {
+function Field({ icon: Icon, label, children, wide }) {
   return (
-    <div className="rs-field">
+    <div className="rs-field" style={wide ? { gridColumn: "1 / -1" } : undefined}>
       <div className="rs-field-h">
         <Icon size={13} strokeWidth={2.2} style={{ color: C.cyan }} />
         <span>{label}</span>
@@ -471,7 +621,16 @@ function DetailPanel({ group, onSelect }) {
         </Field>
         <Field icon={Crosshair} label="NOTABLE VICTIMS">
           <div className="rs-chiprow">
-            {group.victims.map((v) => <Chip key={v} tone="red">{v}</Chip>)}
+            {group.victims.map((v) => {
+              const href = VICTIM_LINKS[v];
+              return href ? (
+                <Chip key={v} tone="red" href={href}>
+                  <ExternalLink size={10} style={{ marginRight: 4, opacity: 0.8 }} />{v}
+                </Chip>
+              ) : (
+                <Chip key={v} tone="red">{v}</Chip>
+              );
+            })}
           </div>
         </Field>
         {lineage.length > 0 && (
@@ -480,6 +639,17 @@ function DetailPanel({ group, onSelect }) {
               {lineage.map(({ g, rel }) => (
                 <Chip key={g.id + rel} tone="cyan" onClick={() => onSelect(g.id)}>
                   {rel === "from" ? "↰ " : "↳ "}{g.name}
+                </Chip>
+              ))}
+            </div>
+          </Field>
+        )}
+        {REFS[group.id]?.length > 0 && (
+          <Field icon={FileText} label="SOURCES / FURTHER READING" wide>
+            <div className="rs-chiprow">
+              {REFS[group.id].map((r) => (
+                <Chip key={r.url} tone="cyan" href={r.url}>
+                  <ExternalLink size={10} style={{ marginRight: 5, opacity: 0.85 }} />{r.label}
                 </Chip>
               ))}
             </div>
@@ -519,13 +689,60 @@ function chartTooltip({ active, payload, label }) {
 /* ------------------------------ App -------------------------------- */
 
 export default function RansomScope() {
-  const [selected, setSelected] = useState("qilin");
-  const [filter, setFilter] = useState("all");
+  // Initialize from the URL hash so deep-links restore the full view.
+  const init = readHashState();
+  const [selected, setSelected] = useState(
+    init.group && GROUP_BY_ID[init.group] ? init.group : "qilin"
+  );
+  const [filter, setFilter] = useState(
+    ["active", "disrupted", "defunct"].includes(init.status) ? init.status : "all"
+  );
+  const [query, setQuery] = useState(init.q || "");
+  const [facet, setFacet] = useState(
+    ACCESS_TAGS.includes(init.access) ? init.access : null
+  );
+
+  // Write current state to the URL hash (replaceState → no history spam).
+  useEffect(() => {
+    const p = new URLSearchParams();
+    if (selected) p.set("group", selected);
+    if (filter !== "all") p.set("status", filter);
+    if (query.trim()) p.set("q", query.trim());
+    if (facet) p.set("access", facet);
+    const qs = p.toString();
+    const newHash = qs ? "#" + qs : "";
+    if (newHash !== window.location.hash) {
+      window.history.replaceState(
+        null, "", window.location.pathname + window.location.search + newHash
+      );
+    }
+  }, [selected, filter, query, facet]);
+
+  // Respond to manual hash edits / back-forward navigation.
+  useEffect(() => {
+    const onHash = () => {
+      const s = readHashState();
+      if (s.group && GROUP_BY_ID[s.group]) setSelected(s.group);
+      setFilter(["active", "disrupted", "defunct"].includes(s.status) ? s.status : "all");
+      setQuery(s.q || "");
+      setFacet(ACCESS_TAGS.includes(s.access) ? s.access : null);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   const filtered = useMemo(
-    () => (filter === "all" ? GROUPS : GROUPS.filter((g) => g.status === filter)),
-    [filter]
+    () =>
+      GROUPS.filter(
+        (g) =>
+          (filter === "all" || g.status === filter) &&
+          (!facet || (TAGS[g.id] || []).includes(facet)) &&
+          matchesQuery(g, query)
+      ),
+    [filter, facet, query]
   );
+  const filteredIds = useMemo(() => new Set(filtered.map((g) => g.id)), [filtered]);
+  const filtering = filter !== "all" || !!facet || query.trim() !== "";
   const group = selected ? GROUP_BY_ID[selected] : null;
 
   const statusCounts = useMemo(() => {
@@ -580,14 +797,58 @@ export default function RansomScope() {
           </div>
         </div>
         <div className="rs-hint">Click a group to trace its ancestry — dashed lines mark rebrands and where affiliates fled after takedowns.</div>
-        <LineageTimeline groups={GROUPS} selected={selected} onSelect={setSelected} />
+        <div className="rs-facetbar">
+          <span className="rs-facetbar-label"><KeyRound size={12} /> HIGHLIGHT BY INITIAL ACCESS</span>
+          {ACCESS_TAGS.map((t) => {
+            const n = GROUPS.filter((g) => (TAGS[g.id] || []).includes(t)).length;
+            return (
+              <button
+                key={t}
+                className={"rs-facet" + (facet === t ? " on" : "")}
+                onClick={() => setFacet(facet === t ? null : t)}
+                aria-pressed={facet === t}
+              >
+                {t} <span className="rs-facet-n">{n}</span>
+              </button>
+            );
+          })}
+          {facet && (
+            <button className="rs-facet rs-facet-clear" onClick={() => setFacet(null)}>
+              <X size={11} /> Clear
+            </button>
+          )}
+        </div>
+        <LineageTimeline
+          groups={GROUPS}
+          selected={selected}
+          onSelect={setSelected}
+          matchIds={filteredIds}
+          filtering={filtering}
+        />
       </section>
 
       {/* roster + detail */}
       <section className="rs-main">
         <div className="rs-roster">
           <div className="rs-roster-h">
-            <span>ROSTER</span>
+            <div className="rs-roster-title">
+              <span>ROSTER</span>
+              <span className="rs-roster-count">{filtered.length}/{GROUPS.length}</span>
+            </div>
+            <div className="rs-search">
+              <Search size={13} />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search groups, victims, sectors…"
+                aria-label="Search groups"
+              />
+              {query && (
+                <button className="rs-search-x" onClick={() => setQuery("")} aria-label="Clear search">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
             <div className="rs-filters">
               {["all", "active", "disrupted", "defunct"].map((f) => (
                 <button
@@ -601,19 +862,23 @@ export default function RansomScope() {
             </div>
           </div>
           <div className="rs-roster-list">
-            {filtered.map((g) => (
-              <button
-                key={g.id}
-                className={"rs-rcard" + (selected === g.id ? " on" : "")}
-                onClick={() => setSelected(g.id)}
-              >
-                <span className="rs-rdot" style={{ background: STATUS[g.status].color }} />
-                <span className="rs-rname">{g.name}</span>
-                <span className="rs-ryears">
-                  {Math.floor(g.start)}–{g.end >= 2026 ? "now" : Math.floor(g.end)}
-                </span>
-              </button>
-            ))}
+            {filtered.length === 0 ? (
+              <div className="rs-empty">No groups match these filters.</div>
+            ) : (
+              filtered.map((g) => (
+                <button
+                  key={g.id}
+                  className={"rs-rcard" + (selected === g.id ? " on" : "")}
+                  onClick={() => setSelected(g.id)}
+                >
+                  <span className="rs-rdot" style={{ background: STATUS[g.status].color }} />
+                  <span className="rs-rname">{g.name}</span>
+                  <span className="rs-ryears">
+                    {Math.floor(g.start)}–{g.end >= 2026 ? "now" : Math.floor(g.end)}
+                  </span>
+                </button>
+              ))
+            )}
           </div>
         </div>
 
@@ -800,6 +1065,37 @@ const css = `
 
 .rs-footer{margin-top:16px;display:flex;flex-direction:column;gap:4px;
   font-size:10.5px;color:${C.faint};font-family:ui-monospace,monospace;line-height:1.5;}
+
+/* search box + roster header */
+.rs-roster-title{display:flex;align-items:center;justify-content:space-between;}
+.rs-roster-count{font-size:10.5px;color:${C.muted};font-family:ui-monospace,monospace;font-weight:600;}
+.rs-search{display:flex;align-items:center;gap:7px;background:${C.panel2};
+  border:1px solid ${C.line};border-radius:8px;padding:6px 9px;transition:border-color .14s;}
+.rs-search:focus-within{border-color:${C.cyan}66;}
+.rs-search>svg{color:${C.faint};flex:none;}
+.rs-search input{flex:1;min-width:0;background:transparent;border:none;outline:none;
+  color:${C.text};font-size:12.5px;font-family:inherit;}
+.rs-search input::placeholder{color:${C.faint};}
+.rs-search-x{background:none;border:none;color:${C.faint};cursor:pointer;padding:0;
+  display:grid;place-items:center;}
+.rs-search-x:hover{color:${C.text};}
+.rs-empty{color:${C.muted};font-size:12.5px;text-align:center;padding:22px 8px;font-style:italic;}
+
+/* initial-access facet bar */
+.rs-facetbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 12px;}
+.rs-facetbar-label{display:inline-flex;align-items:center;gap:5px;font-size:10px;
+  letter-spacing:0.8px;color:${C.muted};font-family:ui-monospace,monospace;margin-right:4px;}
+.rs-facetbar-label svg{color:${C.cyan};}
+.rs-facet{font-size:10.5px;padding:4px 9px;border-radius:7px;border:1px solid ${C.line};
+  background:${C.panel2};color:${C.muted};cursor:pointer;font-family:ui-monospace,monospace;
+  display:inline-flex;align-items:center;gap:6px;transition:all .14s;}
+.rs-facet:hover{color:${C.text};border-color:${C.faint};}
+.rs-facet.on{background:${C.cyan}16;color:${C.cyan};border-color:${C.cyan}66;}
+.rs-facet-n{font-size:9.5px;opacity:0.75;background:${C.ink};border-radius:20px;padding:0 6px;}
+.rs-facet-clear{color:${C.red};border-color:${C.red}44;}
+.rs-facet-clear:hover{color:${C.red};border-color:${C.red};}
+
+a.rs-chip{text-decoration:none;}
 
 @media (max-width:880px){
   .rs-kpis{grid-template-columns:1fr 1fr;}
