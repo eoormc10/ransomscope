@@ -1,82 +1,26 @@
 /* ------------------------------------------------------------------ *
- * PAPER DATA — content carried over from the CSCE 701 deliverable
- * ("To Pay a Ransom Is to Feed the Wolf") and the accompanying deck.
+ * PAPER DATA — the case evidence and practical conclusions from the
+ * CSCE 701 deliverable ("To Pay a Ransom Is to Feed the Wolf").
  *
- * Everything here is transcribed from the group's own paper/slides, so
- * the site and the write-up stay in sync. Figures keep the paper's
- * sourcing discipline: confirmed facts are attributed to the primary
- * source, and material that is only reported (not company-confirmed) is
- * flagged with `qualified: true` so the UI can label it as such.
+ * Only the substantive content lives here: the four case studies, the
+ * cross-case findings, and the layered-defense model. The academic
+ * apparatus (abstract, methodology, works cited) stays in the paper.
+ *
+ * Sourcing follows the paper's own discipline: confirmed facts are
+ * attributed to a primary source, and material that is only reported —
+ * not company-confirmed — is flagged with `qualified` so the UI can
+ * label it as outside reporting rather than established fact.
  * ------------------------------------------------------------------ */
-
-export const PAPER = {
-  title: "To Pay a Ransom Is to Feed the Wolf",
-  subtitle: "The Evolution of Ransomware and What Organizations Can Do About It",
-  authors: ["Isabella Rios", "Braiton Mendoza", "Ivan Reyes"],
-  course: "CSCE 701 — Fundamentals of Cybersecurity",
-  instructor: "Dr. Shreyas Kumar",
-  institution: "Texas A&M University · Dept. of Computer Science & Engineering",
-  date: "July 25, 2026",
-  thesis:
-    "Although ransomware has evolved into a specialized criminal industry combining encryption, data theft, and social engineering, organizations can substantially reduce both the likelihood and impact of an attack through layered security controls and tested recovery planning.",
-  abstract:
-    "Ransomware has grown from a relatively simple form of malware into one of the most disruptive cybersecurity threats facing modern organizations. This paper uses a qualitative integrative literature review and comparative case-study analysis to examine ransomware's historical development, common access methods, organizational consequences, and mitigation strategies. The analysis prioritizes government guidance, regulatory filings, law-enforcement releases, and company reports, supplemented by peer-reviewed research and carefully qualified journalism. Four incidents — WannaCry, Colonial Pipeline, MGM Resorts, and Change Healthcare — were selected to represent different sectors, attack mechanisms, and forms of operational impact. The results show that no single technical failure explains ransomware harm; recurring factors include delayed patching, compromised credentials, weak identity verification, third-party concentration, and insufficiently tested recovery processes. The paper concludes that layered controls — especially phishing-resistant multifactor authentication, patching, network segmentation, secure backups, monitoring, and practiced incident response — reduce both the likelihood and impact of attacks, while ransom payment remains legally and operationally uncertain. Future research should use standardized incident data to compare control effectiveness, payment outcomes, and AI-assisted social engineering over time.",
-};
-
-export const RESEARCH_QUESTIONS = [
-  "How has ransomware evolved from isolated file encryption into organized, multi-stage extortion?",
-  "What recurring weaknesses and consequences appear across WannaCry, Colonial Pipeline, MGM Resorts, and Change Healthcare?",
-  "Which defensive practices are most consistently supported by authoritative guidance and the case evidence?",
-];
-
-// Results section / deck slide 8.
-export const FINDINGS = [
-  {
-    head: "Entry paths vary, but access failures repeat.",
-    body: "Incidents begin through different mechanisms, yet failures in patching, credential protection, identity verification, or third-party governance repeatedly create usable access.",
-  },
-  {
-    head: "The largest effects are not always encryption alone.",
-    body: "Containment decisions, system interdependence, and uncertainty about how far an attacker reached can stop operations on their own.",
-  },
-  {
-    head: "Centralized providers multiply consequences.",
-    body: "One compromised service provider can spread consequences far beyond the initially compromised organization — to customers, partners, and entire sectors.",
-  },
-  {
-    head: "Resilience requires layers.",
-    body: "Coordinated prevention, detection, response, and recovery matter more than any single security product.",
-  },
-];
-
-// Deck slide 9 — how technical access becomes business pressure.
-export const CHAIN = [
-  {
-    n: "01",
-    stage: "Access weakness",
-    items: ["Phishing", "Stolen / reused credentials", "Unpatched internet-facing systems", "Weak identity verification"],
-  },
-  {
-    n: "02",
-    stage: "Expansion + uncertainty",
-    items: ["Privilege escalation", "Lateral movement", "Data theft before encryption", "Scope confusion"],
-  },
-  {
-    n: "03",
-    stage: "Operational leverage",
-    items: ["Systems shut down", "Services paused to contain", "Customers affected", "Deployment timed for nights, weekends, holidays"],
-  },
-  {
-    n: "04",
-    stage: "Payment pressure",
-    items: ["Legal exposure", "Operational deadlines", "Reputational damage", "Decisions made without full information"],
-  },
-];
 
 // Case Study Findings — each examined across the paper's five themes.
 export const CASES = [
   {
     id: "wannacry",
+    stats: [
+      { v: "200K+", l: "machines affected" },
+      { v: "150+", l: "countries hit" },
+      { v: "2 months", l: "patch was available beforehand" },
+    ],
     name: "WannaCry",
     when: "May 2017",
     sector: "Global · healthcare, transport, manufacturing, government",
@@ -90,19 +34,25 @@ export const CASES = [
       disruption:
         "Disrupted hospitals, transportation companies, manufacturers, and government offices worldwide. Europol called the international scale unprecedented and coordinated the response.",
       impact:
-        "Harm was measured in halted services rather than a headline ransom figure — the outbreak showed a single missing security update could create widespread operational risk.",
+        "Harm was measured in halted services rather than a headline ransom figure — the outbreak showed that a single missing security update could create widespread operational risk.",
       recovery:
         "Microsoft had released security update MS17-010 in March 2017, two months before the outbreak. Many systems remained unpatched; some organizations ran older equipment or lacked a complete inventory of vulnerable devices.",
       takeaway:
         "Patching is both a technical and a management issue: organizations need an inventory, assigned responsibility, testing procedures, maintenance windows, and a way to confirm updates were actually installed.",
     },
-    sources: [
-      { label: "Europol — WannaCry response", url: "https://www.europol.europa.eu/media-press/newsroom/news/wannacry-ransomware" },
-      { label: "Microsoft MSRC — MS17-010 guidance", url: "https://msrc.microsoft.com/blog/2017/05/customer-guidance-for-wannacrypt-attacks/" },
+    refs: [
+      { label: "Microsoft MSRC: Guidance for WannaCrypt attacks", url: "https://msrc.microsoft.com/blog/2017/05/customer-guidance-for-wannacrypt-attacks/", type: "vendor" },
+      { label: "Wikipedia: WannaCry ransomware attack", url: "https://en.wikipedia.org/wiki/WannaCry_ransomware_attack", type: "wiki" },
+      { label: "CISA: Indicators associated with WannaCry", url: "https://www.cisa.gov/news-events/alerts/2017/05/12/indicators-associated-wannacry-ransomware", type: "cisa" },
     ],
   },
   {
     id: "colonial",
+    stats: [
+      { v: "~75 BTC", l: "paid (≈$4.4M)" },
+      { v: "63.7 BTC", l: "traced and seized by DOJ" },
+      { v: "IT only", l: "ransomware never reached the pipeline" },
+    ],
     name: "Colonial Pipeline",
     when: "May 2021",
     sector: "Energy · critical infrastructure",
@@ -110,7 +60,7 @@ export const CASES = [
     headline: "Critical infrastructure",
     lesson: "Containment can halt physical services",
     accent: "amber",
-    link: "darkside", // jumps to the group profile above
+    link: "darkside", // jumps to the actor profile in the roster above
     themes: {
       access:
         "The attack affected the company's business information systems rather than the equipment that physically moves fuel.",
@@ -123,13 +73,19 @@ export const CASES = [
       takeaway:
         "An attack on business systems can interrupt physical services and public confidence even when ransomware never touched operational equipment. Uncertainty about what an attacker reached may itself require suspending operations.",
     },
-    sources: [
-      { label: "U.S. GAO — Colonial Pipeline response", url: "https://www.gao.gov/products/gao-22-104746" },
-      { label: "DOJ — seizure of DarkSide ransom proceeds", url: "https://www.justice.gov/opa/pr/department-justice-seizes-23-million-cryptocurrency-paid-ransomware-extortionists-darkside" },
+    refs: [
+      { label: "DOJ: Seizure of DarkSide ransom proceeds", url: "https://www.justice.gov/opa/pr/department-justice-seizes-23-million-cryptocurrency-paid-ransomware-extortionists-darkside", type: "gov" },
+      { label: "CISA: DarkSide Ransomware (AA21-131A)", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-131a", type: "cisa" },
+      { label: "Wikipedia: Colonial Pipeline ransomware attack", url: "https://en.wikipedia.org/wiki/Colonial_Pipeline_ransomware_attack", type: "wiki" },
     ],
   },
   {
     id: "mgm",
+    stats: [
+      { v: "Service desk", l: "reported entry point" },
+      { v: "Guest-facing", l: "systems taken offline" },
+      { v: "Q3 2023", l: "financial impact disclosed" },
+    ],
     name: "MGM Resorts",
     when: "September 2023",
     sector: "Hospitality · gaming",
@@ -142,7 +98,7 @@ export const CASES = [
       access:
         "Bloomberg reported the intrusion began with social engineering directed at MGM's IT service desk, based on a cybersecurity executive familiar with the investigation.",
       disruption:
-        "MGM's own filings describe a \"cybersecurity issue\" involving unauthorized access, system shutdowns, and operational disruptions. Shutting systems down disrupted domestic properties and guest-facing services.",
+        "MGM's own filings describe a “cybersecurity issue” involving unauthorized access, system shutdowns, and operational disruptions. Shutting systems down disrupted domestic properties and guest-facing services.",
       impact:
         "The company reported exposure of some customer information and a negative effect on third-quarter performance.",
       recovery:
@@ -152,13 +108,18 @@ export const CASES = [
     },
     qualified:
       "MGM did not confirm the initial access method in its regulatory filing. The service-desk account is treated as well-sourced reporting, not an officially established fact.",
-    sources: [
-      { label: "MGM Resorts International — Form 8-K", url: "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000789570&type=8-K&dateb=&owner=include&count=40" },
-      { label: "Reuters — MGM cyberattack coverage", url: "https://www.reuters.com/technology/mgm-resorts-says-cybersecurity-issue-affecting-some-its-systems-2023-09-11/" },
+    refs: [
+      { label: "CISA: #StopRansomware ALPHV Blackcat (AA23-353A)", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-353a", type: "cisa" },
+      { label: "Wikipedia: 2023 MGM Resorts cyberattack", url: "https://en.wikipedia.org/wiki/2023_MGM_Resorts_cyberattack", type: "wiki" },
     ],
   },
   {
     id: "change",
+    stats: [
+      { v: "$2.2B", l: "direct response costs" },
+      { v: "192.7M", l: "individuals affected" },
+      { v: "$9B+", l: "in loans to providers" },
+    ],
     name: "Change Healthcare",
     when: "February 2024",
     sector: "Healthcare · claims & payment processing",
@@ -179,14 +140,175 @@ export const CASES = [
       takeaway:
         "One compromised service provider can create privacy, financial, and patient-care consequences across an entire industry. The cost of ransomware cannot be measured only by the ransom amount.",
     },
-    sources: [
-      { label: "HHS — Change Healthcare cybersecurity incident", url: "https://www.hhs.gov/hipaa/for-professionals/special-topics/change-healthcare-cybersecurity-incident-frequently-asked-questions/index.html" },
-      { label: "UnitedHealth Group — Form 10-K", url: "https://www.unitedhealthgroup.com/investors/financial-reports.html" },
+    refs: [
+      { label: "HHS: Change Healthcare incident FAQ", url: "https://www.hhs.gov/hipaa/for-professionals/special-topics/change-healthcare-cybersecurity-incident-frequently-asked-questions/index.html", type: "gov" },
+      { label: "UnitedHealth Group: Financial reports (Form 10-K)", url: "https://www.unitedhealthgroup.com/investors/financial-reports.html", type: "vendor" },
+      { label: "Wikipedia: 2024 Change Healthcare ransomware attack", url: "https://en.wikipedia.org/wiki/2024_Change_Healthcare_ransomware_attack", type: "wiki" },
     ],
   },
 ];
 
-// Deck slide 10 + the paper's "How Organizations Can Protect Themselves".
+/* ---------------- How the extortion model evolved ------------------ *
+ * The paper's central evolutionary claim: what attackers hold hostage
+ * has changed even more than how they break in. Each stage adds a new
+ * source of leverage rather than replacing the last — modern crews mix
+ * and match depending on what pressures a particular victim.
+ * ------------------------------------------------------------------ */
+export const EXTORTION_STAGES = [
+  {
+    n: "01",
+    model: "Encryption only",
+    era: "2013 – 2019",
+    tone: "slate",
+    holds: "Your access to your own files",
+    how: "Encrypt the files, sell back the key. If the victim restores from a clean backup, the attacker has no remaining leverage.",
+    counter: "A tested backup defeats it outright.",
+    examples: ["CryptoLocker", "GandCrab"],
+  },
+  {
+    n: "02",
+    model: "Double extortion",
+    era: "2019 – present",
+    tone: "amber",
+    holds: "Your files + your secrets",
+    how: "Copy sensitive data out of the network first, then encrypt. Refusing to pay now risks publication on a leak site, so good backups alone no longer end the incident.",
+    counter: "Backups no longer close the case — egress monitoring and data minimization matter.",
+    examples: ["REvil", "Conti", "LockBit"],
+    link: "lockbit",
+  },
+  {
+    n: "03",
+    model: "Triple extortion",
+    era: "2020 – present",
+    tone: "red",
+    holds: "Your files, secrets + your relationships",
+    how: "Add direct pressure outside the victim organization — contacting customers, partners, patients, or regulators to make silence impossible.",
+    counter: "Pre-drafted customer and regulator communications reduce the surprise value.",
+    examples: ["BlackCat", "Black Basta"],
+    link: "blackcat",
+  },
+  {
+    n: "04",
+    model: "Extortion-first",
+    era: "2023 – present",
+    tone: "violet",
+    holds: "Only your secrets",
+    how: "Skip encryption entirely. Steal at scale through one software flaw and extort every downstream victim at once — faster, quieter, and harder to spot as a ransomware event.",
+    counter: "Nothing to decrypt means recovery plans built only around restoring files miss the incident.",
+    examples: ["Clop (MOVEit)"],
+    link: "clop",
+  },
+];
+
+/* -------------------- Did paying actually work? -------------------- *
+ * The FBI does not support ransom payments: they encourage further
+ * attacks and guarantee nothing. These four outcomes are the evidence.
+ * ------------------------------------------------------------------ */
+export const PAYMENT_OUTCOMES = [
+  {
+    case: "Colonial Pipeline",
+    year: "2021",
+    paid: true,
+    amount: "~75 BTC (≈$4.4M)",
+    outcome:
+      "The decryptor was reportedly too slow to be useful, and Colonial restored from its own backups anyway. What money came back came from the FBI — the DOJ traced and seized about 63.7 BTC.",
+    verdict: "Recovery came from backups and law enforcement, not the purchase.",
+    ref: { label: "DOJ: seizure announcement", url: "https://www.justice.gov/opa/pr/department-justice-seizes-23-million-cryptocurrency-paid-ransomware-extortionists-darkside" },
+  },
+  {
+    case: "Change Healthcare",
+    year: "2024",
+    paid: true,
+    amount: "~$22M reported",
+    outcome:
+      "ALPHV leadership took the payment, then pulled an exit scam — stiffing the affiliate who had actually done the intrusion and still held the stolen data. The affiliate re-extorted the victim.",
+    verdict: "Paying bought neither deletion of the data nor an end to the extortion.",
+    ref: { label: "Change Healthcare attack", url: "https://en.wikipedia.org/wiki/2024_Change_Healthcare_ransomware_attack" },
+  },
+  {
+    case: "Hive victims",
+    year: "2021 – 23",
+    paid: false,
+    amount: "$130M in demands averted",
+    outcome:
+      "The FBI infiltrated Hive and quietly held the group's decryption keys for months, handing them to victims free of charge before seizing the infrastructure in January 2023.",
+    verdict: "Keys came from law enforcement — reporting early paid better than paying.",
+    ref: { label: "DOJ: Hive disruption", url: "https://www.justice.gov/usao-mdfl/pr/us-department-justice-disrupts-hive-ransomware-variant" },
+  },
+  {
+    case: "Ireland HSE",
+    year: "2021",
+    paid: false,
+    amount: "No ransom paid",
+    outcome:
+      "Conti handed over a decryption key without payment, but that barely mattered: restoring the national health service took months of manual work, and reported recovery costs ran into the hundreds of millions of euro.",
+    verdict: "Even a free decryptor does not undo the disruption — recovery is the real cost.",
+    ref: { label: "HSE ransomware attack", url: "https://en.wikipedia.org/wiki/Health_Service_Executive_ransomware_attack" },
+  },
+];
+
+/* ------------- Initial-access tag → defensive control -------------- *
+ * Maps the roster's normalized access tags to the specific controls the
+ * paper recommends, so every actor profile answers "what raises the bar
+ * against this group?" without a separate essay.
+ * ------------------------------------------------------------------ */
+export const TAG_TO_CONTROL = {
+  "Exploited public apps":
+    "Risk-prioritized patching of internet-facing systems, regular vulnerability scanning, and compensating controls when a patch cannot ship immediately.",
+  "File-transfer zero-days":
+    "Segment and monitor managed file-transfer appliances, minimize the data left sitting in them, and hold vendors to patch timelines.",
+  "Phishing":
+    "Phishing-resistant MFA, training built on realistic behavior rather than annual videos, and a blame-free path to report mistakes fast.",
+  "Stolen / VPN credentials":
+    "Phishing-resistant MFA on all remote access, credential monitoring for exposed passwords, and account-lockout controls.",
+  "RDP / valid accounts":
+    "Never expose remote desktop directly to the internet, apply least privilege, and remove unused accounts promptly.",
+  "Social engineering":
+    "Strong help-desk identity verification before any password reset or MFA change — the control MGM's attackers went around.",
+  "Supply chain":
+    "Vendor and dependency inventory, plus segmentation of vendor-managed tooling so one provider cannot reach everything.",
+  "Exploit kits":
+    "Keep browsers and plugins patched, deploy endpoint detection, and filter known-malicious web infrastructure.",
+};
+
+// Applies no matter how the attacker got in.
+export const UNIVERSAL_CONTROLS =
+  "Regardless of entry: offline or immutable backups with tested restoration, network segmentation to limit lateral movement, monitoring for large outbound transfers, and a written, rehearsed incident-response plan.";
+
+/* --------------- Case incidents pinned to the timeline -------------- *
+ * Plots each case as a marker on the row of the actor responsible, so
+ * the incidents the paper analyzes sit inside the ecosystem view rather
+ * than beside it. WannaCry (2017) predates the 2018 window and is not a
+ * tracked RaaS group — it is reachable from the Origins strip instead.
+ * `at` is a decimal year, matching the timeline's scale.
+ * ------------------------------------------------------------------ */
+export const CASE_MARKERS = [
+  { id: "colonial", group: "darkside", at: 2021.35, name: "Colonial Pipeline", when: "May 2021" },
+  { id: "mgm", group: "blackcat", at: 2023.7, name: "MGM Resorts", when: "Sept 2023" },
+  { id: "change", group: "blackcat", at: 2024.12, name: "Change Healthcare", when: "Feb 2024" },
+];
+
+// Cross-case findings — what the four incidents show when read together.
+export const FINDINGS = [
+  {
+    head: "Entry paths vary, but access failures repeat.",
+    body: "Incidents begin through different mechanisms, yet failures in patching, credential protection, identity verification, or third-party governance repeatedly create usable access.",
+  },
+  {
+    head: "The largest effects are not always encryption alone.",
+    body: "Containment decisions, system interdependence, and uncertainty about how far an attacker reached can stop operations on their own.",
+  },
+  {
+    head: "Centralized providers multiply consequences.",
+    body: "One compromised service provider can spread consequences far beyond the initially compromised organization — to customers, partners, and entire sectors.",
+  },
+  {
+    head: "Resilience requires layers.",
+    body: "Coordinated prevention, detection, response, and recovery matter more than any single security product.",
+  },
+];
+
+// What organizations can do — structured on the NIST IR 8374 functions.
 export const DEFENSES = [
   {
     fn: "GOVERN + IDENTIFY",
@@ -248,83 +370,4 @@ export const DEFENSES = [
     ],
     note: "A backup that exists but cannot be restored within the required time is not an effective recovery plan.",
   },
-];
-
-// "Should Organizations Pay the Ransom?" — the argument behind the title.
-export const PAY = {
-  question: "Should organizations pay the ransom?",
-  intro:
-    "The decision is complicated because an organization may be facing serious harm to customers, patients, or operations. But payment buys far less certainty than the pressure of the moment suggests.",
-  notBuying: [
-    "A working decryption key",
-    "Removal of the attacker's persistent access",
-    "Deletion of stolen information",
-    "Protection from a repeat intrusion",
-  ],
-  buying: [
-    "Reliable, tested backups",
-    "Practiced recovery and tabletop exercises",
-    "Segmented networks that limit blast radius",
-    "Cyber insurance and emergency communication plans",
-  ],
-  positions: [
-    {
-      who: "FBI",
-      what: "Does not support ransom payments: they encourage additional attacks and provide no guarantee that data will be returned.",
-    },
-    {
-      who: "U.S. Treasury",
-      what: "Warns that organizations and payment facilitators may face sanctions exposure when a transaction involves a sanctioned person or entity, and emphasizes prompt reporting and cooperation with government agencies.",
-    },
-  ],
-  close:
-    "Paying may help one victim in the moment, but it also supports a criminal system that will continue looking for new victims. The most effective response is not simply refusing to pay after an attack — it is building enough resilience before an attack that the organization is not forced to depend on the criminals who caused the disruption.",
-};
-
-export const METHOD = {
-  design:
-    "Qualitative integrative literature review combined with comparative case-study analysis. The review covers material available through July 25, 2026, while the historical discussion reaches back to the 1989 AIDS Trojan.",
-  hierarchy: [
-    { rank: "1", label: "Primary + authoritative", detail: "Government guidance, law-enforcement releases, regulatory filings, and company reports — used for incident facts, financial figures, and official recommendations." },
-    { rank: "2", label: "Peer-reviewed research", detail: "Used for historical development, ransomware taxonomies, and payment-system analysis." },
-    { rank: "3", label: "Qualified journalism", detail: "Used only when a material detail was not confirmed in an official source, and explicitly labeled as outside reporting." },
-  ],
-  selection:
-    "The four cases were selected purposively rather than randomly, to span sectors and mechanisms: global worm-like outbreak, critical-infrastructure interdependence, social engineering and identity verification, and third-party concentration. Each was examined across five themes — access or propagation, operational disruption, financial or privacy consequences, response and recovery, and the principal defensive lesson.",
-  limits: [
-    "Public accounts may omit sensitive investigative details, and threat-actor attribution can remain disputed or change as investigations continue.",
-    "Financial figures use the categories each organization chose to report, so they are not perfectly comparable.",
-    "Four information-rich cases illustrate different forms of ransomware risk but cannot establish how frequently the observed patterns occur.",
-    "The paper identifies recurring patterns and practical implications; it does not estimate prevalence or establish statistical causation.",
-  ],
-};
-
-export const FUTURE_WORK = [
-  "Standardized incident datasets that separate initial access, encryption, data theft, containment downtime, demand, payment, recovery time, and total cost",
-  "Which controls actually change outcomes — not merely whether organizations adopted them",
-  "Real recovery time and how often immutable backups remain usable during live incidents",
-  "AI-assisted impersonation: whether it changes success rates or mainly increases scale and speed",
-  "Payment outcomes, sanctions exposure, and attacker adaptation after law-enforcement disruption",
-];
-
-// Works cited (deck slide 13). `url` is included only where a stable
-// public link was verified; the rest render as plain citations.
-export const REFERENCES = [
-  { cite: "Cybersecurity and Infrastructure Security Agency. (2023). #StopRansomware Guide.", url: "https://www.cisa.gov/resources-tools/resources/stopransomware-guide" },
-  { cite: "Cybersecurity and Infrastructure Security Agency. (2021). BlackMatter Ransomware (AA21-291A).", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-291a" },
-  { cite: "Cybersecurity and Infrastructure Security Agency. Understanding Ransomware Threat Actors.", url: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-165a" },
-  { cite: "Europol. (2017). WannaCry Ransomware.", url: "https://www.europol.europa.eu/media-press/newsroom/news/wannacry-ransomware" },
-  { cite: "Federal Bureau of Investigation. Ransomware.", url: "https://www.fbi.gov/how-we-can-help-you/scams-and-safety/common-frauds-and-scams/ransomware" },
-  { cite: "Federal Bureau of Investigation. Spoofing and Phishing.", url: "https://www.fbi.gov/how-we-can-help-you/scams-and-safety/common-frauds-and-scams/spoofing-and-phishing" },
-  { cite: "MGM Resorts International. (2023). Current Report, Form 8-K." },
-  { cite: "Microsoft Security Response Center. (2017). Customer Guidance for WannaCrypt Attacks.", url: "https://msrc.microsoft.com/blog/2017/05/customer-guidance-for-wannacrypt-attacks/" },
-  { cite: "O'Kane, P., Sezer, S., & Carlin, D. (2018). Evolution of Ransomware. IET Networks.", url: "https://doi.org/10.1049/iet-net.2017.0207" },
-  { cite: "Oz, H., et al. (2022). A Survey on Ransomware. ACM Computing Surveys.", url: "https://doi.org/10.1145/3514229" },
-  { cite: "Paquet-Clouston, M., Haslhofer, B., & Dupont, B. (2019). Ransomware Payments in the Bitcoin Ecosystem. Journal of Cybersecurity.", url: "https://doi.org/10.1093/cybsec/tyz003" },
-  { cite: "Souppaya, M., et al. (2026). Ransomware Risk Management. NIST IR 8374 Rev. 1.", url: "https://csrc.nist.gov/pubs/ir/8374/final" },
-  { cite: "UnitedHealth Group Incorporated. (2025). Annual Report, Form 10-K.", url: "https://www.unitedhealthgroup.com/investors/financial-reports.html" },
-  { cite: "United States Department of Justice. (2021). Department of Justice Seizes $2.3 Million in Cryptocurrency Paid to DarkSide.", url: "https://www.justice.gov/opa/pr/department-justice-seizes-23-million-cryptocurrency-paid-ransomware-extortionists-darkside" },
-  { cite: "United States Department of Health and Human Services. Change Healthcare Cybersecurity Incident FAQ.", url: "https://www.hhs.gov/hipaa/for-professionals/special-topics/change-healthcare-cybersecurity-incident-frequently-asked-questions/index.html" },
-  { cite: "United States Department of the Treasury. (2021). Updated Advisory on Potential Sanctions Risks for Facilitating Ransomware Payments.", url: "https://ofac.treasury.gov/media/912981/download" },
-  { cite: "United States Government Accountability Office. Colonial Pipeline ransomware attack.", url: "https://www.gao.gov/products/gao-22-104746" },
 ];

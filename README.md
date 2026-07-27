@@ -5,23 +5,25 @@ research paper *"To Pay a Ransom Is to Feed the Wolf: The Evolution of Ransomwar
 and What Organizations Can Do About It"* (Rios, Mendoza & Reyes, Texas A&M
 University, July 2026).
 
-The site pairs a live-updating threat-actor dashboard with the paper's written
-argument: 35 years of ransomware history, group lineage and TTPs (2018–2026),
-the four case studies, the layered-defense model, and the payment question.
-Built with React + Vite + Recharts.
+The site is a threat-actor dashboard — 35 years of ransomware history, group
+lineage and TTPs (2018–2026), and a live feed — plus the paper's case evidence:
+the four incidents it analyzes, what they show together, and the layered-defense
+model they support. Every claim links out to its primary source. Built with
+React + Vite + Recharts.
 
 ## Where the content lives
 
 | File | Contents |
 | --- | --- |
 | [`src/RansomScope.jsx`](src/RansomScope.jsx) | Dashboard: group roster, lineage timeline/graph, origins strip, charts, live feed |
-| [`src/paperData.js`](src/paperData.js) | Everything transcribed from the paper + deck — abstract, research questions, four cases, findings, defenses, methodology, references |
+| [`src/paperData.js`](src/paperData.js) | Case evidence from the paper — the four case studies, cross-case findings, and the defense model |
 | [`src/PaperSections.jsx`](src/PaperSections.jsx) | Components + styles that render `paperData.js` |
 | [`src/theme.js`](src/theme.js) | Shared color palette |
 | [`worker/`](worker/) | Cloudflare Worker proxying the live threat feeds |
 
-Group intel in `RansomScope.jsx` is hard-coded from public reporting; the paper
-sections in `paperData.js` are transcribed from the group's own write-up.
+All data is hard-coded from public reporting. The site carries the paper's case
+findings, not the paper itself — methodology, limitations, and the full works
+cited stay in the write-up.
 
 ## Develop
 

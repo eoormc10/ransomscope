@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="560" viewBox="0 0 1680 560">
+<rect width="1680" height="560" fill="#0A0D14"/>
+<text x="40" y="52" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="27" font-weight="700" fill="#E9EDF5">What the attacker holds hostage</text>
+<text x="40" y="82" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="15" fill="#828FA6">Each stage adds a new source of leverage rather than replacing the last. Modern operations mix and match by victim.</text>
+<line x1="40" y1="104" x2="1640" y2="104" stroke="#232C3C" stroke-width="1"/>
+<rect x="40" y="132" width="367" height="372" rx="10" fill="#161C28" stroke="#232C3C"/>
+<rect x="40" y="132" width="367" height="3" rx="1.5" fill="#58647A"/>
+<text x="58" y="166" font-family="Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#58647A" letter-spacing="1">01</text>
+<text x="389" y="166" font-family="Consolas, Menlo, monospace" font-size="12" fill="#5A6478" text-anchor="end">2013 – 2019</text>
+<text x="58" y="206" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="21" font-weight="700" fill="#58647A">Encryption only</text>
+<text x="58" y="240" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="700" fill="#5A6478" letter-spacing="1.1">HOLDS</text>
+<text x="58" y="262" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14.5" font-weight="600" fill="#E9EDF5">Your access to your own files</text>
+<text x="58" y="300" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">Encrypt the files, sell back the key.</text>
+<text x="58" y="321" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">Leverage ends the moment the victim</text>
+<text x="58" y="342" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">restores from a clean backup.</text>
+<line x1="58" y1="410" x2="389" y2="410" stroke="#1B2230"/>
+<text x="58" y="430" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" font-style="italic" fill="#5A6478">Defeated outright by a tested</text>
+<text x="58" y="447" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" font-style="italic" fill="#5A6478">backup.</text>
+<text x="58" y="484" font-family="Consolas, Menlo, monospace" font-size="12" fill="#58647A">CryptoLocker · GandCrab</text>
+<path d="M 420 309 L 434 318 L 420 327" fill="none" stroke="#5A6478" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="451" y="132" width="367" height="372" rx="10" fill="#161C28" stroke="#232C3C"/>
+<rect x="451" y="132" width="367" height="3" rx="1.5" fill="#E5A23A"/>
+<text x="469" y="166" font-family="Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#E5A23A" letter-spacing="1">02</text>
+<text x="800" y="166" font-family="Consolas, Menlo, monospace" font-size="12" fill="#5A6478" text-anchor="end">2019 – present</text>
+<text x="469" y="206" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="21" font-weight="700" fill="#E5A23A">Double extortion</text>
+<text x="469" y="240" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="700" fill="#5A6478" letter-spacing="1.1">HOLDS</text>
+<text x="469" y="262" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14.5" font-weight="600" fill="#E9EDF5">Your files and your secrets</text>
+<text x="469" y="300" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">Copy sensitive data out first, then</text>
+<text x="469" y="321" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">encrypt. Refusing to pay now risks</text>
+<text x="469" y="342" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">publication on a leak site.</text>
+<line x1="469" y1="410" x2="800" y2="410" stroke="#1B2230"/>
+<text x="469" y="430" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" font-style="italic" fill="#5A6478">Backups no longer close the</text>
+<text x="469" y="447" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" font-style="italic" fill="#5A6478">incident.</text>
+<text x="469" y="484" font-family="Consolas, Menlo, monospace" font-size="12" fill="#E5A23A">REvil · Conti · LockBit</text>
+<path d="M 831 309 L 845 318 L 831 327" fill="none" stroke="#5A6478" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="862" y="132" width="367" height="372" rx="10" fill="#161C28" stroke="#232C3C"/>
+<rect x="862" y="132" width="367" height="3" rx="1.5" fill="#F0454F"/>
+<text x="880" y="166" font-family="Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#F0454F" letter-spacing="1">03</text>
+<text x="1211" y="166" font-family="Consolas, Menlo, monospace" font-size="12" fill="#5A6478" text-anchor="end">2020 – present</text>
+<text x="880" y="206" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="21" font-weight="700" fill="#F0454F">Triple extortion</text>
+<text x="880" y="240" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="700" fill="#5A6478" letter-spacing="1.1">HOLDS</text>
+<text x="880" y="262" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14.5" font-weight="600" fill="#E9EDF5">Your files, secrets and</text>
+<text x="880" y="282" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14.5" font-weight="600" fill="#E9EDF5">relationships</text>
+<text x="880" y="320" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">Add pressure outside the victim —</text>
+<text x="880" y="341" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">contacting customers, partners,</text>
+<text x="880" y="362" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">patients or regulators directly.</text>
+<line x1="880" y1="410" x2="1211" y2="410" stroke="#1B2230"/>
+<text x="880" y="430" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" font-style="italic" fill="#5A6478">Staying quiet stops being an</text>
+<text x="880" y="447" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" font-style="italic" fill="#5A6478">option.</text>
+<text x="880" y="484" font-family="Consolas, Menlo, monospace" font-size="12" fill="#F0454F">BlackCat · Black Basta</text>
+<path d="M 1242 309 L 1256 318 L 1242 327" fill="none" stroke="#5A6478" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="1273" y="132" width="367" height="372" rx="10" fill="#161C28" stroke="#232C3C"/>
+<rect x="1273" y="132" width="367" height="3" rx="1.5" fill="#8C7BFF"/>
+<text x="1291" y="166" font-family="Consolas, Menlo, monospace" font-size="12.5" font-weight="700" fill="#8C7BFF" letter-spacing="1">04</text>
+<text x="1622" y="166" font-family="Consolas, Menlo, monospace" font-size="12" fill="#5A6478" text-anchor="end">2023 – present</text>
+<text x="1291" y="206" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="21" font-weight="700" fill="#8C7BFF">Extortion-first</text>
+<text x="1291" y="240" font-family="Consolas, Menlo, monospace" font-size="10.5" font-weight="700" fill="#5A6478" letter-spacing="1.1">HOLDS</text>
+<text x="1291" y="262" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="14.5" font-weight="600" fill="#E9EDF5">Only your secrets</text>
+<text x="1291" y="300" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">Skip encryption entirely. Steal at</text>
+<text x="1291" y="321" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">scale through one software flaw and</text>
+<text x="1291" y="342" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="13.5" fill="#828FA6">extort every downstream victim.</text>
+<line x1="1291" y1="410" x2="1622" y2="410" stroke="#1B2230"/>
+<text x="1291" y="430" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" font-style="italic" fill="#5A6478">Nothing to decrypt — restore-only</text>
+<text x="1291" y="447" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" font-style="italic" fill="#5A6478">recovery plans miss it.</text>
+<text x="1291" y="484" font-family="Consolas, Menlo, monospace" font-size="12" fill="#8C7BFF">Clop (MOVEit)</text>
+<text x="40" y="544" font-family="Segoe UI, Helvetica Neue, Arial, sans-serif" font-size="12.5" fill="#5A6478">Figure 1. Compiled from public reporting and government advisories cited in this review.</text>
+</svg>

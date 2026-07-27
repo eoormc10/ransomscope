@@ -7,13 +7,14 @@ import {
   ShieldAlert, Skull, Activity, GitBranch, Lock, KeyRound,
   Crosshair, Building2, Banknote, Radar, AlertTriangle,
   ExternalLink, FileText, Search, X, Target,
-  Plus, Check, ArrowLeftRight, History, Rss, RefreshCw,
+  Plus, Check, ArrowLeftRight, History, Rss, RefreshCw, ShieldCheck,
 } from "lucide-react";
+import { TAG_TO_CONTROL, UNIVERSAL_CONTROLS, CASE_MARKERS, CASES } from "./paperData.js";
 import { WORKER_URL } from "./config.js";
 import { C } from "./theme.js";
 import {
-  PaperBand, AttackChain, CaseStudies, Findings, DefenseStack, PayPanel,
-  MethodNotes, paperCss,
+  CaseStudies, Findings, DefenseStack, ExtortionEvolution, PaymentOutcomes,
+  paperCss,
 } from "./PaperSections.jsx";
 
 /* ------------------------------------------------------------------ *
@@ -191,6 +192,35 @@ const GROUPS = [
 
 const GROUP_BY_ID = Object.fromEntries(GROUPS.map((g) => [g.id, g]));
 
+// Live feeds name groups their own way ("cl0p", "lockbit3", "alphv"). Map those
+// spellings onto the tracked roster so live victims link to a real profile.
+const normName = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const GROUP_ALIASES = {
+  gandcrab:  ["gandcrab"],
+  revil:     ["revil", "sodinokibi", "sodin"],
+  darkside:  ["darkside", "blackmatter"],
+  conti:     ["conti"],
+  hive:      ["hive"],
+  clop:      ["clop", "cl0p"],
+  lockbit:   ["lockbit", "lockbit2", "lockbit3", "lockbit30", "lockbit4", "lockbit5", "lockbitsupp"],
+  blackcat:  ["blackcat", "alphv", "alphvblackcat", "blackcatalphv", "noberus"],
+  ransomhub: ["ransomhub"],
+  blackbasta:["blackbasta", "basta"],
+  play:      ["play", "playcrypt"],
+  qilin:     ["qilin", "agenda"],
+  akira:     ["akira"],
+  gentlemen: ["gentlemen", "thegentlemen"],
+};
+const ALIAS_TO_ID = {};
+GROUPS.forEach((g) => {
+  ALIAS_TO_ID[normName(g.name)] = g.id;
+  if (g.aka && g.aka !== "—") ALIAS_TO_ID[normName(g.aka)] = g.id;
+});
+Object.entries(GROUP_ALIASES).forEach(([id, list]) =>
+  list.forEach((a) => (ALIAS_TO_ID[a] = id))
+);
+const resolveGroup = (name) => ALIAS_TO_ID[normName(name)] || null;
+
 // Normalized initial-access techniques per group (for faceted filtering).
 const TAGS = {
   gandcrab:  ["Exploit kits", "Phishing", "RDP / valid accounts"],
@@ -366,7 +396,13 @@ function readHashState() {
     access: h.get("access"),
     view: h.get("view"),
     cmp: h.get("cmp"),
+    case: h.get("case"),
   };
+}
+
+// Valid case id from the hash, or the default (first case).
+function parseCase(raw) {
+  return CASES.some((c) => c.id === raw) ? raw : CASES[0].id;
 }
 
 // Validate a comma-separated id list from the hash → known ids, capped at 3.
@@ -406,57 +442,77 @@ const GROWTH_DATA = [
 ];
 
 // Pre-2018 origins — milestone-based (evenly spaced, not linearly time-scaled).
-const ERAS = ["Cryptovirology", "Early crypto", "Bitcoin era", "Worm era", "RaaS dawn"];
+const ERAS = ["Cryptovirology", "Early crypto", "Bitcoin era", "Worm era", "RaaS dawn", "Emerging"];
 const ERA_COLOR = {
   "Cryptovirology": C.violet,
   "Early crypto": C.slate,
   "Bitcoin era": C.cyan,
   "Worm era": C.red,
   "RaaS dawn": C.amber,
+  "Emerging": C.green,
 };
 const ORIGINS = [
   {
     id: "aids", year: "1989", name: "AIDS Trojan", era: "Cryptovirology",
+    shift: "Extortion is invented — but the encryption is reversible and payment means mailing cash to a PO box.",
     blurb: "The first known ransomware. Biologist Joseph Popp mailed 20,000 infected floppy disks to attendees of a WHO AIDS conference. After 90 reboots it hid directories and scrambled file names, demanding $189 sent to a PO box in Panama. The symmetric encryption was reversed quickly — but the extortion blueprint was set.",
     ref: { label: "Wikipedia: AIDS (Trojan horse)", url: "https://en.wikipedia.org/wiki/AIDS_(Trojan_horse)" },
   },
   {
     id: "cryptovirology", year: "1996", name: "Cryptoviral Extortion", era: "Cryptovirology",
+    shift: "Public-key cryptography makes recovery mathematically impossible without the attacker — theory arrives years before practice.",
     blurb: "Columbia researchers Adam Young and Moti Yung formalized 'cryptoviral extortion' — using public-key cryptography so that only the attacker holds the decryption key. The paper described modern ransomware years before it was practical, and named the field cryptovirology.",
     ref: { label: "Wikipedia: Cryptovirology", url: "https://en.wikipedia.org/wiki/Cryptovirology" },
   },
   {
     id: "gpcode", year: "2005", name: "GPCode / Archiveus", era: "Early crypto",
+    shift: "Real encryption replaces file-hiding tricks. The remaining bottleneck is collecting the money.",
     blurb: "GPCode (a.k.a. PGPCoder) and Archiveus brought the theory to life, encrypting victims' files with RSA keys and demanding payment. Early keys were short enough to break, but it marked the decisive shift from merely hiding files to genuinely encrypting them.",
     ref: { label: "Wikipedia: PGPCoder", url: "https://en.wikipedia.org/wiki/PGPCoder" },
   },
   {
     id: "cryptolocker", year: "2013", name: "CryptoLocker", era: "Bitcoin era",
+    shift: "Bitcoin solves collection. Strong crypto plus borderless payment turns extortion into a scalable business.",
     blurb: "The watershed. CryptoLocker paired RSA-2048 encryption with Bitcoin ransoms and the Gameover Zeus botnet for distribution, extorting millions. It proved the model was massively profitable — and was only stopped by the international Operation Tovar takedown in 2014.",
     ref: { label: "Wikipedia: CryptoLocker", url: "https://en.wikipedia.org/wiki/CryptoLocker" },
   },
   {
     id: "keranger", year: "2016", name: "Locky · Cerber · KeRanger", era: "Bitcoin era",
+    shift: "The affiliate model appears: build the malware once, rent it out, and let others find the victims.",
     blurb: "Ransomware went industrial and cross-platform: Locky's mass spam campaigns, Cerber pioneering the Ransomware-as-a-Service affiliate model, and KeRanger — the first ransomware to successfully infect Apple's macOS.",
     ref: { label: "Wikipedia: KeRanger", url: "https://en.wikipedia.org/wiki/KeRanger" },
   },
   {
     id: "wannacry", year: "2017", name: "WannaCry", era: "Worm era",
+    caseId: "wannacry", // has a full case study below
+    shift: "Self-propagation removes the victim from the equation — no one has to click anything for an organization to fall.",
     blurb: "WannaCry weaponized the leaked NSA 'EternalBlue' exploit to self-propagate, hitting 200,000+ machines across 150 countries in days and crippling the UK's NHS. A researcher's accidental kill-switch halted it; it was later attributed to North Korea.",
     ref: { label: "Wikipedia: WannaCry ransomware attack", url: "https://en.wikipedia.org/wiki/WannaCry_ransomware_attack" },
   },
   {
     id: "notpetya", year: "2017", name: "NotPetya", era: "Worm era",
+    shift: "Ransomware becomes a disguise. Paying could never have worked — the goal was destruction, not profit.",
     blurb: "Weeks later, NotPetya posed as ransomware but was a destructive wiper — recovery was impossible by design. Spread via a hijacked Ukrainian tax-software update, it caused an estimated $10B in global damage (Maersk, Merck, Mondelēz) and was attributed to Russia's Sandworm.",
     ref: { label: "Wikipedia: Petya and NotPetya", url: "https://en.wikipedia.org/wiki/Petya_and_NotPetya" },
   },
   {
     id: "ryuk", year: "2018", name: "SamSam · Ryuk", era: "RaaS dawn",
+    shift: "Big-game hunting: stop spraying consumers, hand-pick organizations that cannot afford downtime.",
     blurb: "Attackers pivoted to 'big-game hunting' — fewer targets, far bigger payouts. SamSam paralyzed the City of Atlanta, and Ryuk paired with banking-trojan botnets to demand six- and seven-figure ransoms. The stage was set for the RaaS explosion charted below.",
     ref: { label: "Wikipedia: Ryuk (ransomware)", url: "https://en.wikipedia.org/wiki/Ryuk_(ransomware)" },
   },
+  {
+    id: "ai", year: "Next", name: "AI-assisted deception", era: "Emerging",
+    horizon: true,
+    shift: "The lure gets cheaper and far more convincing — but the way in stays the same.",
+    blurb: "The FBI has warned that criminals are using artificial intelligence to make phishing, translation, victim research, and impersonation more convincing and more scalable. What AI changes is the quality and volume of the deception, not the underlying weakness: successful intrusions still depend on exposed systems, weak passwords, missing patches, excessive privileges, and slow detection. The controls below still work — but identity verification now has to assume the voice on the phone may not be a person at all.",
+    ref: { label: "FBI: Spoofing and Phishing", url: "https://www.fbi.gov/how-we-can-help-you/scams-and-safety/common-frauds-and-scams/spoofing-and-phishing" },
+  },
 ];
 const ORIGIN_BY_ID = Object.fromEntries(ORIGINS.map((m) => [m.id, m]));
+// The strip runs history → "2018+" marker → the forward-looking horizon node.
+const ORIGIN_HISTORY = ORIGINS.filter((m) => !m.horizon);
+const ORIGIN_HORIZON = ORIGINS.filter((m) => m.horizon);
 
 /* ----------------------------- UI bits ----------------------------- */
 
@@ -513,7 +569,7 @@ function Chip({ children, tone = "neutral", onClick, active, href }) {
 
 /* --------------------------- Timeline ------------------------------ */
 
-function LineageTimeline({ groups, selected, onSelect, matchIds, filtering }) {
+function LineageTimeline({ groups, selected, onSelect, matchIds, filtering, onOpenCase }) {
   const yearMin = 2018, yearMax = 2026.3;
   const VW = 1000;
   const plotX0 = 152, plotX1 = 986;
@@ -636,6 +692,36 @@ function LineageTimeline({ groups, selected, onSelect, matchIds, filtering }) {
                 fill={col} opacity={dim ? 0.12 : isSel ? 1 : 0.85}
               />
             )}
+          </g>
+        );
+      })}
+
+      {/* case-study incidents, pinned to the row of the actor responsible */}
+      {CASE_MARKERS.map((m) => {
+        if (indexOf[m.group] == null) return null;
+        const cx = xFor(m.at);
+        const cy = yMid(indexOf[m.group]);
+        const dim = filtering && matchIds && !matchIds.has(m.group);
+        const r = 6.5;
+        return (
+          <g
+            key={m.id}
+            className="rs-casemark"
+            onClick={(e) => { e.stopPropagation(); onOpenCase && onOpenCase(m.id); }}
+            style={{ cursor: onOpenCase ? "pointer" : "default" }}
+            opacity={dim ? 0.2 : 1}
+          >
+            <title>{`${m.name} — ${m.when} · click to read the case study`}</title>
+            <circle cx={cx} cy={cy} r={11} fill="transparent" />
+            <polygon
+              points={`${cx},${cy - r} ${cx + r},${cy} ${cx},${cy + r} ${cx - r},${cy}`}
+              fill={C.ink} stroke={C.text} strokeWidth={1.8}
+            />
+            <polygon
+              className="rs-casemark-in"
+              points={`${cx},${cy - 3} ${cx + 3},${cy} ${cx},${cy + 3} ${cx - 3},${cy}`}
+              fill={C.text}
+            />
           </g>
         );
       })}
@@ -888,6 +974,19 @@ function DetailPanel({ group, onSelect }) {
             ))}
           </div>
         </Field>
+        <Field icon={ShieldCheck} label="COUNTERMEASURES — WHAT RAISES THE BAR" wide>
+          <div className="rs-cm">
+            {(TAGS[group.id] || [])
+              .filter((t) => TAG_TO_CONTROL[t])
+              .map((t) => (
+                <div className="rs-cm-row" key={t}>
+                  <span className="rs-cm-tag">{t}</span>
+                  <span className="rs-cm-ctrl">{TAG_TO_CONTROL[t]}</span>
+                </div>
+              ))}
+            <div className="rs-cm-univ">{UNIVERSAL_CONTROLS}</div>
+          </div>
+        </Field>
         {REFS[group.id]?.length > 0 && (
           <Field icon={FileText} label="SOURCES / FURTHER READING" wide>
             <div className="rs-chiprow">
@@ -1035,7 +1134,7 @@ function chartTooltip({ active, payload, label }) {
 
 /* --------------------------- Origins strip ------------------------- */
 
-function OriginsStrip() {
+function OriginsStrip({ onOpenCase }) {
   const [sel, setSel] = useState("aids");
   const m = ORIGIN_BY_ID[sel];
   return (
@@ -1052,11 +1151,11 @@ function OriginsStrip() {
         </div>
       </div>
       <div className="rs-hint">
-        From the 1989 AIDS Trojan to the dawn of Ransomware-as-a-Service. Click a milestone — the modern RaaS era continues below.
+        Each milestone removed a limit that had been holding extortion back. Click one to see what changed — the modern RaaS era continues below, and the horizon node shows where it is heading.
       </div>
       <div className="rs-mile-track">
         <div className="rs-mile-line" />
-        {ORIGINS.map((o) => {
+        {ORIGIN_HISTORY.map((o) => {
           const on = sel === o.id;
           return (
             <button
@@ -1078,6 +1177,27 @@ function OriginsStrip() {
           );
         })}
         <span className="rs-mile-end">2018+ →</span>
+        {ORIGIN_HORIZON.map((o) => {
+          const on = sel === o.id;
+          return (
+            <button
+              key={o.id}
+              className={"rs-mile rs-mile-horizon" + (on ? " on" : "")}
+              onClick={() => setSel(o.id)}
+              title="Where the threat is heading"
+            >
+              <span
+                className="rs-mile-dot rs-mile-dot-horizon"
+                style={{
+                  borderColor: on ? C.cyan : ERA_COLOR[o.era],
+                  boxShadow: on ? `0 0 0 4px ${C.cyan}33` : "none",
+                }}
+              />
+              <span className="rs-mile-year" style={{ color: ERA_COLOR[o.era] }}>{o.year}</span>
+              <span className="rs-mile-name">{o.name}</span>
+            </button>
+          );
+        })}
       </div>
       <div className="rs-mile-detail">
         <div className="rs-mile-detail-h">
@@ -1093,10 +1213,23 @@ function OriginsStrip() {
             {m.era}
           </span>
         </div>
+        {m.shift && (
+          <div className="rs-mile-shift" style={{ borderColor: ERA_COLOR[m.era] }}>
+            <span className="rs-mile-shift-l">WHAT CHANGED</span>
+            {m.shift}
+          </div>
+        )}
         <p className="rs-mile-blurb">{m.blurb}</p>
-        <Chip tone="cyan" href={m.ref.url}>
-          <ExternalLink size={10} style={{ marginRight: 5, opacity: 0.85 }} />{m.ref.label}
-        </Chip>
+        <div className="rs-chiprow">
+          {m.caseId && onOpenCase && (
+            <Chip tone="cyan" onClick={() => onOpenCase(m.caseId)}>
+              ↓ Read the full case study
+            </Chip>
+          )}
+          <Chip tone="cyan" href={m.ref.url}>
+            <ExternalLink size={10} style={{ marginRight: 5, opacity: 0.85 }} />{m.ref.label}
+          </Chip>
+        </div>
       </div>
     </section>
   );
@@ -1137,7 +1270,7 @@ function feedFresh(updated) {
   return (Date.now() - new Date(updated).getTime()) / 60000 < 20;
 }
 
-function LiveFeed({ s, onRefresh }) {
+function LiveFeed({ s, onRefresh, onSelectGroup, onFacet }) {
   // Not configured yet — show a setup hint instead of a broken section.
   if (!WORKER_URL) {
     return (
@@ -1194,6 +1327,15 @@ function LiveFeed({ s, onRefresh }) {
         <div className="rs-live-grid">
           <div className="rs-live-col">
             <div className="rs-live-h"><AlertTriangle size={13} /> Ransomware-linked CVEs <span className="rs-live-src">CISA KEV</span></div>
+            {onFacet && (
+              <button
+                className="rs-live-bridge"
+                onClick={() => onFacet("Exploited public apps")}
+                title="Highlight every tracked group that breaks in this way"
+              >
+                → {GROUPS.filter((g) => (TAGS[g.id] || []).includes("Exploited public apps")).length} tracked groups exploit public-facing apps
+              </button>
+            )}
             {vulns.length === 0 ? (
               <div className="rs-live-empty">No items returned.</div>
             ) : vulns.map((v) => (
@@ -1213,22 +1355,47 @@ function LiveFeed({ s, onRefresh }) {
 
           <div className="rs-live-col">
             <div className="rs-live-h"><Crosshair size={13} /> Recent leak-site victims <span className="rs-live-src">ransomware.live</span></div>
+            {victims.length > 0 && (() => {
+              const tracked = victims.filter((v) => resolveGroup(v.group)).length;
+              return (
+                <div className="rs-live-bridge rs-live-bridge-note">
+                  {tracked} of {victims.length} posted by a group profiled above
+                  {tracked < victims.length && " — the rest are newer crews, which is exactly the churn the roster documents"}.
+                </div>
+              );
+            })()}
             {victims.length === 0 ? (
               <div className="rs-live-empty">No items returned.</div>
-            ) : victims.map((v, i) => (
-              <a key={(v.url || v.victim) + i} className="rs-live-item"
-                href={v.url || undefined}
-                target="_blank" rel="noopener noreferrer">
-                <div className="rs-live-item-top">
-                  <span className="rs-live-sig">{v.victim}</span>
-                  <span className="rs-live-date">{v.date}</span>
+            ) : victims.map((v, i) => {
+              const gid = resolveGroup(v.group);
+              return (
+                <div key={(v.url || v.victim) + i} className="rs-live-item rs-live-item-row">
+                  <div className="rs-live-item-top">
+                    {v.url ? (
+                      <a className="rs-live-sig rs-live-sig-a" href={v.url}
+                        target="_blank" rel="noopener noreferrer">{v.victim}</a>
+                    ) : (
+                      <span className="rs-live-sig">{v.victim}</span>
+                    )}
+                    <span className="rs-live-date">{v.date}</span>
+                  </div>
+                  <div className="rs-live-item-sub">
+                    {gid && onSelectGroup ? (
+                      <button className="rs-live-group" onClick={() => onSelectGroup(gid)}
+                        title={`Open the ${GROUP_BY_ID[gid].name} profile`}>
+                        {v.group} <span className="rs-live-group-go">↑</span>
+                      </button>
+                    ) : (
+                      <span className="rs-live-group rs-live-group-un"
+                        title="Not in the tracked roster — this crew postdates the curated snapshot">
+                        {v.group}
+                      </span>
+                    )}
+                    {v.sector ? ` · ${v.sector}` : ""}{v.country ? ` · ${v.country}` : ""}
+                  </div>
                 </div>
-                <div className="rs-live-item-sub">
-                  <strong>{v.group}</strong>
-                  {v.sector ? ` · ${v.sector}` : ""}{v.country ? ` · ${v.country}` : ""}
-                </div>
-              </a>
-            ))}
+              );
+            })}
           </div>
 
           <div className="rs-live-col">
@@ -1260,6 +1427,76 @@ function LiveFeed({ s, onRefresh }) {
   );
 }
 
+/* --------------------- Section nav + act headers -------------------- */
+
+const ACTS = [
+  { id: "act-history",   n: "01", label: "HISTORY",   title: "How it evolved",       sub: "Thirty-five years of removing the limits that held extortion back — and what attackers hold hostage now." },
+  { id: "act-ecosystem", n: "02", label: "ECOSYSTEM", title: "Who is doing it",      sub: "The operators, their lineage, and how takedowns redistribute affiliates rather than ending them." },
+  { id: "act-cases",     n: "03", label: "CASES",     title: "What it actually cost", sub: "Four incidents across four sectors — and whether paying resolved anything." },
+  { id: "act-defense",   n: "04", label: "DEFENSE",   title: "What actually works",  sub: "No single product stops ransomware. Layered controls and tested recovery do." },
+  { id: "act-live",      n: "05", label: "LIVE",      title: "Right now",            sub: "Machine feeds of currently exploited flaws and freshly posted victims." },
+];
+
+const ACT_IDS = ACTS.map((a) => a.id);
+
+// Highlights the nav entry for whichever act is topmost on screen.
+function useActiveSection(ids) {
+  const [active, setActive] = useState(ids[0]);
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const els = ids.map((id) => document.getElementById(id)).filter(Boolean);
+    if (!els.length) return;
+    const seen = new Map();
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => seen.set(e.target.id, e));
+        const visible = [...seen.values()]
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length) setActive(visible[0].target.id);
+      },
+      { rootMargin: "-64px 0px -55% 0px", threshold: 0 }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, [ids.join("|")]);
+  return active;
+}
+
+function SectionNav({ active }) {
+  const go = (id) =>
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  return (
+    <nav className="rs-nav" aria-label="Section navigation">
+      {ACTS.map((a) => (
+        <button
+          key={a.id}
+          className={"rs-nav-b" + (active === a.id ? " on" : "")}
+          onClick={() => go(a.id)}
+          aria-current={active === a.id ? "true" : undefined}
+        >
+          <span className="rs-nav-n">{a.n}</span>{a.label}
+        </button>
+      ))}
+      <button className="rs-nav-top" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+        ↑ TOP
+      </button>
+    </nav>
+  );
+}
+
+function ActHeader({ act }) {
+  return (
+    <div className="rs-act" id={act.id}>
+      <div className="rs-act-n">{act.n}</div>
+      <div>
+        <h2 className="rs-act-title">{act.title}</h2>
+        <div className="rs-act-sub">{act.sub}</div>
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------ App -------------------------------- */
 
 export default function RansomScope() {
@@ -1279,6 +1516,26 @@ export default function RansomScope() {
   const [compareIds, setCompareIds] = useState(() => parseCompare(init.cmp));
   const [live, loadLive] = useLiveFeed();
   const liveFresh = feedFresh(live.updated);
+
+  // Which case study is open — lifted so the timeline and Origins strip
+  // can open a specific case from their incident markers.
+  const [caseSel, setCaseSel] = useState(() => parseCase(init.case));
+  const openCase = (id) => {
+    if (!CASES.some((c) => c.id === id)) return;
+    setCaseSel(id);
+    document.getElementById("rs-cases")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const activeAct = useActiveSection(ACT_IDS);
+
+  // Live feed → timeline: highlight every group using a given access path.
+  const applyFacet = (tag) => {
+    if (!ACCESS_TAGS.includes(tag)) return;
+    setFacet(tag);
+    document.getElementById("rs-timeline")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   // Case studies link back to the actor profiles above — select + scroll.
   const jumpToGroup = (id) => {
@@ -1304,6 +1561,7 @@ export default function RansomScope() {
     if (facet) p.set("access", facet);
     if (view !== "timeline") p.set("view", view);
     if (compareIds.length) p.set("cmp", compareIds.join(","));
+    if (caseSel !== CASES[0].id) p.set("case", caseSel);
     const qs = p.toString();
     const newHash = qs ? "#" + qs : "";
     if (newHash !== window.location.hash) {
@@ -1311,7 +1569,7 @@ export default function RansomScope() {
         null, "", window.location.pathname + window.location.search + newHash
       );
     }
-  }, [selected, filter, query, facet, view, compareIds]);
+  }, [selected, filter, query, facet, view, compareIds, caseSel]);
 
   // Respond to manual hash edits / back-forward navigation.
   useEffect(() => {
@@ -1323,6 +1581,7 @@ export default function RansomScope() {
       setFacet(ACCESS_TAGS.includes(s.access) ? s.access : null);
       setView(s.view === "lineage" ? "lineage" : "timeline");
       setCompareIds(parseCompare(s.cmp));
+      setCaseSel(parseCase(s.case));
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
@@ -1377,8 +1636,7 @@ export default function RansomScope() {
         </div>
       </header>
 
-      {/* the paper this console visualizes */}
-      <PaperBand />
+      <SectionNav active={activeAct} />
 
       {/* KPIs */}
       <section className="rs-kpis">
@@ -1392,11 +1650,16 @@ export default function RansomScope() {
         ))}
       </section>
 
-      {/* origins (pre-2018) */}
-      <OriginsStrip />
+      {/* ---------------- 01 · how it evolved ---------------- */}
+      <ActHeader act={ACTS[0]} />
+      <OriginsStrip onOpenCase={openCase} />
+      <ExtortionEvolution onSelectGroup={jumpToGroup} />
+
+      {/* ---------------- 02 · who is doing it ---------------- */}
+      <ActHeader act={ACTS[1]} />
 
       {/* timeline */}
-      <section className="rs-card rs-timeline-card">
+      <section className="rs-card rs-timeline-card" id="rs-timeline">
         <div className="rs-card-h rs-th">
           <span><Activity size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> EVOLUTION &amp; LINEAGE — 2018 to present</span>
           <div className="rs-th-right">
@@ -1418,12 +1681,13 @@ export default function RansomScope() {
               <span><i style={{ background: C.red }} /> Active</span>
               <span><i style={{ background: C.amber }} /> Disrupted</span>
               <span><i style={{ background: C.slate }} /> Defunct</span>
+              <span className="rs-legend-mark"><i /> Case study</span>
             </div>
           </div>
         </div>
         <div className="rs-hint">
           {view === "timeline"
-            ? "Click a group to trace its ancestry — dashed lines mark rebrands and where affiliates fled after takedowns."
+            ? "Click a group to trace its ancestry — dashed lines mark rebrands and where affiliates fled after takedowns. Diamonds pin the case studies to the actor responsible; click one to read it. (WannaCry, 2017, predates this window — it is in the Origins strip above.)"
             : "Family tree of rebrands and affiliate spin-offs. Arrows point parent → successor; columns are generations. Click any node."}
         </div>
         <div className="rs-facetbar">
@@ -1454,6 +1718,7 @@ export default function RansomScope() {
             onSelect={setSelected}
             matchIds={filteredIds}
             filtering={filtering}
+            onOpenCase={openCase}
           />
         ) : (
           <LineageGraph
@@ -1615,23 +1880,32 @@ export default function RansomScope() {
         </ChartCard>
       </section>
 
-      {/* ---- from the paper: how incidents unfold, and what to do ---- */}
-      <AttackChain />
-      <CaseStudies onSelectGroup={jumpToGroup} />
+      {/* ---------------- 03 · what it actually cost ---------------- */}
+      <ActHeader act={ACTS[2]} />
+      <CaseStudies
+        onSelectGroup={jumpToGroup}
+        selected={caseSel}
+        onSelect={setCaseSel}
+      />
       <Findings />
+      <PaymentOutcomes />
+
+      {/* ---------------- 04 · what actually works ---------------- */}
+      <ActHeader act={ACTS[3]} />
       <DefenseStack />
-      <PayPanel />
 
-      {/* live feed (Cloudflare Worker proxy) */}
-      <LiveFeed s={live} onRefresh={loadLive} />
-
-      {/* methodology, limitations, works cited */}
-      <MethodNotes />
+      {/* ---------------- 05 · right now ---------------- */}
+      <ActHeader act={ACTS[4]} />
+      <LiveFeed
+        s={live}
+        onRefresh={loadLive}
+        onSelectGroup={jumpToGroup}
+        onFacet={applyFacet}
+      />
 
       <footer className="rs-footer">
         <span>SOURCES — GuidePoint/GRIT · Check Point Research · CISA/FBI advisories · Chainalysis · DOJ &amp; Europol · vendor IR reporting.</span>
         <span>Figures are reported/approximate and compiled for educational use. Not operational intelligence.</span>
-        <span>Companion to “To Pay a Ransom Is to Feed the Wolf” — Rios, Mendoza &amp; Reyes · CSCE 701, Texas A&amp;M University · July 2026.</span>
       </footer>
     </div>
   );
@@ -1662,6 +1936,34 @@ const css = `
   box-shadow:0 0 0 0 var(--pc);animation:rspulse 2s infinite;}
 @keyframes rspulse{0%{box-shadow:0 0 0 0 var(--pc);}70%{box-shadow:0 0 0 7px transparent;}100%{box-shadow:0 0 0 0 transparent;}}
 
+.rs-nav{position:sticky;top:10px;z-index:30;display:flex;gap:5px;flex-wrap:wrap;
+  align-items:center;background:${C.panel}f2;border:1px solid ${C.line};
+  border-radius:12px;padding:7px 8px;margin-bottom:14px;
+  backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
+  box-shadow:0 6px 20px -12px #000;}
+.rs-nav-b{display:flex;align-items:center;gap:7px;font-size:10.5px;letter-spacing:1.1px;
+  font-weight:700;font-family:ui-monospace,monospace;color:${C.muted};
+  background:transparent;border:1px solid transparent;border-radius:8px;
+  padding:6px 11px;cursor:pointer;transition:all .15s;}
+.rs-nav-b:hover{color:${C.text};background:${C.panel2};}
+.rs-nav-b.on{color:${C.cyan};background:${C.cyan}14;border-color:${C.cyan}44;}
+.rs-nav-n{font-size:9.5px;opacity:0.5;}
+.rs-nav-b.on .rs-nav-n{opacity:0.85;}
+.rs-nav-top{margin-left:auto;font-size:10px;letter-spacing:1px;font-weight:700;
+  font-family:ui-monospace,monospace;color:${C.faint};background:transparent;
+  border:1px solid ${C.line};border-radius:8px;padding:6px 10px;cursor:pointer;
+  transition:all .15s;}
+.rs-nav-top:hover{color:${C.cyan};border-color:${C.cyan}55;}
+
+.rs-act{display:flex;align-items:flex-start;gap:15px;scroll-margin-top:66px;
+  margin:26px 0 13px;padding-bottom:13px;border-bottom:1px solid ${C.line};}
+.rs-act-n{font-family:ui-monospace,monospace;font-size:26px;font-weight:800;
+  color:${C.cyan}44;line-height:1;flex:none;letter-spacing:-1px;}
+.rs-act-title{margin:0;font-size:19px;font-weight:800;letter-spacing:0.2px;
+  color:${C.text};line-height:1.15;}
+.rs-act-sub{margin-top:4px;font-size:12.5px;color:${C.muted};line-height:1.5;
+  max-width:760px;}
+
 .rs-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
 .rs-kpi{position:relative;background:${C.panel};border:1px solid ${C.line};
   border-radius:12px;padding:15px 16px 14px;overflow:hidden;}
@@ -1685,12 +1987,18 @@ const css = `
 .rs-legend span{display:flex;align-items:center;gap:5px;}
 .rs-legend i{width:11px;height:8px;border-radius:2px;display:inline-block;}
 .rs-legend-dash i{width:14px;height:0;border-top:1.5px dashed ${C.faint};border-radius:0;}
+.rs-legend-mark i{width:9px;height:9px;border-radius:1px;background:transparent;
+  border:1.6px solid ${C.text};transform:rotate(45deg);}
+.rs-casemark .rs-casemark-in{transition:all .14s;}
+.rs-casemark:hover polygon{fill:${C.cyan};stroke:${C.cyan};}
+.rs-casemark:hover .rs-casemark-in{fill:${C.ink};}
 .rs-hint{font-size:11.5px;color:${C.faint};margin-bottom:6px;font-style:italic;}
 .rs-trow:hover rect:nth-of-type(2){opacity:1;}
 
 .rs-main{display:grid;grid-template-columns:300px 1fr;gap:14px;margin-bottom:14px;}
 .rs-roster{background:${C.panel};border:1px solid ${C.line};border-radius:14px;
-  padding:14px;display:flex;flex-direction:column;}
+  padding:14px;display:flex;flex-direction:column;
+  position:sticky;top:66px;align-self:start;max-height:calc(100vh - 84px);}
 .rs-roster-h{display:flex;flex-direction:column;gap:10px;margin-bottom:11px;}
 .rs-roster-h>span{font-size:12px;letter-spacing:1.4px;font-weight:700;
   font-family:ui-monospace,monospace;}
@@ -1700,7 +2008,7 @@ const css = `
   font-family:ui-monospace,monospace;transition:all .15s;}
 .rs-filter:hover{color:${C.text};border-color:${C.faint};}
 .rs-filter.on{background:${C.cyan}14;color:${C.cyan};border-color:${C.cyan}55;}
-.rs-roster-list{display:flex;flex-direction:column;gap:5px;overflow:auto;max-height:330px;}
+.rs-roster-list{display:flex;flex-direction:column;gap:5px;overflow:auto;flex:1;min-height:0;}
 .rs-rcard{display:flex;align-items:stretch;border-radius:9px;border:1px solid transparent;
   background:${C.panel2};overflow:hidden;transition:all .14s;}
 .rs-rcard:hover{border-color:${C.line};}
@@ -1733,6 +2041,14 @@ const css = `
   color:${C.muted};font-family:ui-monospace,monospace;margin-bottom:7px;font-weight:600;}
 .rs-field-b{font-size:13px;color:#D7DCE7;line-height:1.5;}
 .rs-chiprow{display:flex;flex-wrap:wrap;gap:6px;}
+.rs-cm{display:flex;flex-direction:column;gap:7px;}
+.rs-cm-row{display:grid;grid-template-columns:172px 1fr;gap:13px;align-items:start;}
+.rs-cm-tag{font-size:10.5px;letter-spacing:0.4px;color:${C.cyan};font-weight:600;
+  font-family:ui-monospace,monospace;padding:2px 0 2px 10px;
+  border-left:2px solid ${C.cyan}44;line-height:1.4;}
+.rs-cm-ctrl{font-size:12.5px;line-height:1.55;color:#CFD6E2;}
+.rs-cm-univ{margin-top:4px;padding-top:9px;border-top:1px solid ${C.lineSoft};
+  font-size:12px;line-height:1.55;color:${C.muted};font-style:italic;}
 .rs-chip{font-size:11.5px;padding:4px 9px;border-radius:7px;border:1px solid;
   display:inline-flex;align-items:center;line-height:1.2;}
 .rs-chip-btn{cursor:pointer;transition:filter .14s;}
@@ -1805,6 +2121,13 @@ a.rs-chip{text-decoration:none;}
 .rs-mile-era{font-size:10px;letter-spacing:0.8px;text-transform:uppercase;border:1px solid;
   border-radius:6px;padding:2px 8px;font-family:ui-monospace,monospace;}
 .rs-mile-blurb{margin:10px 0 12px;font-size:13px;line-height:1.6;color:#CDD4E0;}
+.rs-mile-shift{margin-top:11px;padding:9px 12px;border-left:2px solid;
+  background:${C.ink};border-radius:0 8px 8px 0;font-size:12.5px;line-height:1.55;
+  color:${C.text};}
+.rs-mile-shift-l{display:block;font-size:9.5px;letter-spacing:1.2px;color:${C.muted};
+  font-family:ui-monospace,monospace;font-weight:700;margin-bottom:4px;}
+.rs-mile-horizon .rs-mile-year{font-family:ui-monospace,monospace;}
+.rs-mile-dot-horizon{background:transparent;border-style:dashed;border-width:2px;}
 
 /* view toggle (timeline / lineage) */
 .rs-th-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
@@ -1856,6 +2179,26 @@ a.rs-chip{text-decoration:none;}
 .rs-live-item-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
 .rs-live-cve{font-size:12.5px;font-weight:700;color:${C.red};font-family:ui-monospace,monospace;}
 .rs-live-sig{font-size:12.5px;font-weight:700;color:${C.violet};}
+.rs-live-sig-a{text-decoration:none;color:${C.violet};}
+.rs-live-sig-a:hover{text-decoration:underline;}
+.rs-live-item-row:hover{border-color:${C.lineSoft};}
+.rs-live-group{font:inherit;font-size:11.5px;font-weight:700;color:${C.cyan};
+  background:${C.cyan}12;border:1px solid ${C.cyan}3a;border-radius:6px;
+  padding:1px 6px;cursor:pointer;transition:all .14s;display:inline-flex;
+  align-items:center;gap:4px;}
+.rs-live-group:hover{background:${C.cyan}24;border-color:${C.cyan}80;}
+.rs-live-group-go{font-size:10px;opacity:0.75;}
+.rs-live-group-un{color:${C.muted};background:transparent;border-color:${C.line};
+  cursor:help;}
+.rs-live-group-un:hover{background:transparent;border-color:${C.line};}
+.rs-live-bridge-note{color:${C.muted};background:transparent;border-color:${C.line};
+  border-style:solid;cursor:default;line-height:1.45;}
+.rs-live-bridge-note:hover{background:transparent;border-color:${C.line};}
+.rs-live-bridge{display:block;width:100%;text-align:left;font:inherit;font-size:11px;
+  color:${C.cyan};background:${C.cyan}0d;border:1px dashed ${C.cyan}3a;
+  border-radius:8px;padding:6px 9px;margin-bottom:7px;cursor:pointer;
+  transition:all .14s;}
+.rs-live-bridge:hover{background:${C.cyan}1c;border-style:solid;}
 .rs-live-date{font-size:10px;color:${C.faint};font-family:ui-monospace,monospace;white-space:nowrap;}
 .rs-live-item-sub{font-size:11.5px;color:${C.muted};margin-top:3px;line-height:1.4;}
 .rs-live-item-sub strong{color:#CDD4E0;font-weight:600;}
@@ -1889,9 +2232,19 @@ a.rs-chip{text-decoration:none;}
   .rs-charts{grid-template-columns:1fr;}
   .rs-live-grid{grid-template-columns:1fr;}
   .rs-detail-grid{grid-template-columns:1fr;}
-  .rs-roster-list{max-height:none;}
+  /* stacked layout: the roster no longer trails the profile, so let it flow */
+  .rs-roster{position:static;max-height:none;}
+  .rs-roster-list{max-height:340px;}
+  .rs-cm-row{grid-template-columns:1fr;gap:3px;}
+  .rs-act{margin-top:20px;}
+  .rs-act-n{font-size:21px;}
+  .rs-nav{top:6px;}
+  .rs-nav-b{padding:5px 8px;letter-spacing:0.7px;}
+  .rs-nav-n{display:none;}
 }
 @media (prefers-reduced-motion:reduce){
   .rs-pulse{animation:none;}
+  .rs-nav-b,.rs-nav-top{transition:none;}
+  html{scroll-behavior:auto;}
 }
 `;

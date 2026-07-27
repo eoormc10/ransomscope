@@ -1,19 +1,18 @@
 import React, { useState } from "react";
 import {
-  BookOpen, ExternalLink, ChevronRight, Layers, Eye, Siren, RotateCcw,
-  ShieldCheck, Landmark, FlaskConical, AlertTriangle, Ban, CheckCircle2,
-  Scale, Fingerprint, ListChecks, Quote,
+  ExternalLink, Eye, Siren, RotateCcw, ShieldCheck, Landmark,
+  FlaskConical, AlertTriangle, Fingerprint, ListChecks, ChevronRight,
+  Banknote, Lock, FileWarning, Megaphone, DatabaseZap,
 } from "lucide-react";
 import { C } from "./theme.js";
 import {
-  PAPER, RESEARCH_QUESTIONS, FINDINGS, CHAIN, CASES, DEFENSES, PAY,
-  METHOD, FUTURE_WORK, REFERENCES,
+  CASES, FINDINGS, DEFENSES, EXTORTION_STAGES, PAYMENT_OUTCOMES,
 } from "./paperData.js";
 
 /* ------------------------------------------------------------------ *
- * PAPER SECTIONS — the research paper and presentation, rendered into
- * the dashboard. Kept in its own module so RansomScope.jsx stays the
- * threat-actor console; these sections carry the written argument.
+ * CASE SECTIONS — the four incidents the paper analyzes, the findings
+ * that emerge across them, and the defensive model they support.
+ * Kept in its own module so RansomScope.jsx stays the actor console.
  * ------------------------------------------------------------------ */
 
 const TONE = {
@@ -29,94 +28,98 @@ const DEFENSE_ICON = {
   RECOVER: RotateCcw,
 };
 
-function SourceLink({ label, url }) {
-  return (
-    <a className="rs-src-link" href={url} target="_blank" rel="noopener noreferrer">
-      <ExternalLink size={10} />
-      {label}
-    </a>
-  );
-}
+/* ---------------- How the extortion model evolved ------------------ */
 
-/* ------------------------- Paper identity -------------------------- */
+const STAGE_ICON = [Lock, FileWarning, Megaphone, DatabaseZap];
 
-export function PaperBand() {
-  const [open, setOpen] = useState(false);
+export function ExtortionEvolution({ onSelectGroup }) {
   return (
-    <section className="rs-card rs-paper">
+    <section className="rs-card">
       <div className="rs-card-h rs-th">
-        <span><BookOpen size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> THE RESEARCH BEHIND THIS CONSOLE</span>
-        <span className="rs-paper-course">{PAPER.course}</span>
+        <span><Banknote size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> WHAT THE ATTACKER HOLDS HOSTAGE — THE EXTORTION MODEL</span>
+        <span className="rs-src-tag">Leverage evolution · 2013 – present</span>
       </div>
-
-      <div className="rs-paper-grid">
-        <div>
-          <h2 className="rs-paper-title">{PAPER.title}</h2>
-          <div className="rs-paper-sub">{PAPER.subtitle}</div>
-          <div className="rs-paper-by">
-            {PAPER.authors.join(" · ")}
-            <span className="rs-dot"> • </span>
-            {PAPER.instructor}
-            <span className="rs-dot"> • </span>
-            {PAPER.date}
-          </div>
-          <div className="rs-paper-inst">{PAPER.institution}</div>
-
-          <blockquote className="rs-thesis">
-            <Quote size={13} style={{ color: C.cyan, flex: "none", marginTop: 3 }} />
-            <span>{PAPER.thesis}</span>
-          </blockquote>
-
-          <button className="rs-filter rs-abs-toggle" onClick={() => setOpen(!open)}>
-            {open ? "HIDE ABSTRACT" : "READ ABSTRACT"}
-          </button>
-          {open && <p className="rs-abstract">{PAPER.abstract}</p>}
-        </div>
-
-        <div className="rs-rqs">
-          <div className="rs-rq-h">RESEARCH QUESTIONS</div>
-          {RESEARCH_QUESTIONS.map((q, i) => (
-            <div className="rs-rq" key={i}>
-              <span className="rs-rq-n">{String(i + 1).padStart(2, "0")}</span>
-              <span>{q}</span>
-            </div>
-          ))}
-        </div>
+      <div className="rs-hint">
+        How criminals break in has changed. What they hold over you has changed more. Each stage adds leverage rather than replacing the last — modern crews mix and match depending on what pressures a particular victim.
+      </div>
+      <div className="rs-ext">
+        {EXTORTION_STAGES.map((s, i) => {
+          const col = TONE[s.tone] || C.cyan;
+          const Icon = STAGE_ICON[i] || Lock;
+          return (
+            <React.Fragment key={s.n}>
+              <div className="rs-ext-step" style={{ borderTopColor: col }}>
+                <div className="rs-ext-top">
+                  <span className="rs-ext-n" style={{ color: col }}>{s.n}</span>
+                  <Icon size={13} strokeWidth={2.3} style={{ color: col }} />
+                  <span className="rs-ext-era">{s.era}</span>
+                </div>
+                <div className="rs-ext-model" style={{ color: col }}>{s.model}</div>
+                <div className="rs-ext-holds">Holds: {s.holds}</div>
+                <div className="rs-ext-how">{s.how}</div>
+                <div className="rs-ext-counter">{s.counter}</div>
+                <div className="rs-ext-ex">
+                  {s.examples.map((e) =>
+                    s.link && onSelectGroup ? (
+                      <button key={e} className="rs-ext-tag rs-ext-tag-btn"
+                        onClick={() => onSelectGroup(s.link)}
+                        title="Open this actor's profile">{e}</button>
+                    ) : (
+                      <span key={e} className="rs-ext-tag">{e}</span>
+                    )
+                  )}
+                </div>
+              </div>
+              {i < EXTORTION_STAGES.length - 1 && (
+                <div className="rs-ext-arrow"><ChevronRight size={17} /></div>
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
     </section>
   );
 }
 
-/* --------------------------- Attack chain -------------------------- */
+/* --------------------- Did paying actually work? ------------------- */
 
-export function AttackChain() {
+export function PaymentOutcomes() {
   return (
     <section className="rs-card">
       <div className="rs-card-h rs-th">
-        <span><Layers size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> ANATOMY OF AN INCIDENT</span>
-        <span className="rs-src-tag">Paper — Common Attack Methods · Interpretation</span>
+        <span><Banknote size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> DID PAYING ACTUALLY WORK?</span>
+        <span className="rs-src-tag">Payment outcomes on record</span>
       </div>
       <div className="rs-hint">
-        Across every case, attackers convert technical access into business pressure. The visible encryption event is usually the last stage, not the first.
+        The FBI does not support ransom payments: they encourage further attacks and guarantee nothing. Four documented outcomes show what a payment does — and does not — buy.
       </div>
-      <div className="rs-chain">
-        {CHAIN.map((s, i) => (
-          <React.Fragment key={s.n}>
-            <div className="rs-chain-step">
-              <div className="rs-chain-n">{s.n}</div>
-              <div className="rs-chain-stage">{s.stage}</div>
-              <ul className="rs-chain-list">
-                {s.items.map((it) => <li key={it}>{it}</li>)}
-              </ul>
+      <div className="rs-po-grid">
+        {PAYMENT_OUTCOMES.map((p) => {
+          const col = p.paid ? C.red : C.green;
+          return (
+            <div className="rs-po" key={p.case}>
+              <div className="rs-po-h">
+                <div>
+                  <div className="rs-po-case">{p.case}</div>
+                  <div className="rs-po-year">{p.year}</div>
+                </div>
+                <span className="rs-po-badge"
+                  style={{ color: col, borderColor: col + "55", background: col + "16" }}>
+                  {p.paid ? "PAID" : "DID NOT PAY"}
+                </span>
+              </div>
+              <div className="rs-po-amt" style={{ color: col }}>{p.amount}</div>
+              <div className="rs-po-body">{p.outcome}</div>
+              <div className="rs-po-verdict">{p.verdict}</div>
+              <a className="rs-po-ref" href={p.ref.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink size={10} /> {p.ref.label}
+              </a>
             </div>
-            {i < CHAIN.length - 1 && (
-              <div className="rs-chain-arrow"><ChevronRight size={18} /></div>
-            )}
-          </React.Fragment>
-        ))}
+          );
+        })}
       </div>
       <div className="rs-card-note">
-        Key takeaway: cybersecurity controls are also business-continuity controls. Identity security, dependency mapping, asset visibility, and recovery speed determine how much leverage an attacker gains.
+        Payment also carries legal exposure: the U.S. Treasury warns that organizations and payment facilitators may face sanctions risk when a transaction involves a sanctioned person or entity. Preparation — tested backups, segmentation, practiced recovery — is what creates the option not to pay.
       </div>
     </section>
   );
@@ -132,30 +135,31 @@ const THEME_ROWS = [
   { key: "takeaway", label: "DEFENSIVE LESSON" },
 ];
 
-export function CaseStudies({ onSelectGroup }) {
-  const [sel, setSel] = useState(CASES[0].id);
-  const c = CASES.find((x) => x.id === sel) || CASES[0];
+// `selected`/`onSelect` are controlled by the app so the timeline's
+// incident markers and the Origins strip can open a specific case.
+export function CaseStudies({ onSelectGroup, selected, onSelect }) {
+  const c = CASES.find((x) => x.id === selected) || CASES[0];
   const accent = TONE[c.accent] || C.cyan;
 
   return (
-    <section className="rs-card">
+    <section className="rs-card" id="rs-cases">
       <div className="rs-card-h rs-th">
         <span><FlaskConical size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> FOUR CASES, FOUR FORMS OF RISK</span>
-        <span className="rs-src-tag">Paper — Case Study Findings</span>
+        <span className="rs-src-tag">Case evidence · 2017–2024</span>
       </div>
       <div className="rs-hint">
-        Each case was selected to illustrate a different way ransomware creates organizational pressure. Click a case to read it across the paper's five analytic themes.
+        Each case illustrates a different way ransomware creates organizational pressure. Click a case to read it across five themes — with primary sources for every claim.
       </div>
 
       <div className="rs-case-tabs">
         {CASES.map((x) => {
-          const on = x.id === sel;
+          const on = x.id === c.id;
           const a = TONE[x.accent] || C.cyan;
           return (
             <button
               key={x.id}
               className={"rs-case-tab" + (on ? " on" : "")}
-              onClick={() => setSel(x.id)}
+              onClick={() => onSelect(x.id)}
               style={on ? { borderColor: a + "88", background: a + "14" } : undefined}
             >
               <span className="rs-case-dot" style={{ background: a }} />
@@ -191,6 +195,17 @@ export function CaseStudies({ onSelectGroup }) {
           <Fingerprint size={12} style={{ color: C.faint }} /> {c.actor}
         </div>
 
+        {c.stats && (
+          <div className="rs-case-stats">
+            {c.stats.map((s) => (
+              <div className="rs-case-stat" key={s.l} style={{ borderLeftColor: accent }}>
+                <div className="rs-case-stat-v" style={{ color: accent }}>{s.v}</div>
+                <div className="rs-case-stat-l">{s.l}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {c.qualified && (
           <div className="rs-qualified">
             <AlertTriangle size={13} style={{ color: C.amber, flex: "none", marginTop: 2 }} />
@@ -207,8 +222,17 @@ export function CaseStudies({ onSelectGroup }) {
           ))}
         </div>
 
-        <div className="rs-case-srcs">
-          {c.sources.map((s) => <SourceLink key={s.url} {...s} />)}
+        <div className="rs-case-refs">
+          <div className="rs-case-refs-h">SOURCES / FURTHER READING</div>
+          <div className="rs-chiprow">
+            {c.refs.map((r) => (
+              <a key={r.url} className="rs-chip rs-chip-btn" href={r.url}
+                target="_blank" rel="noopener noreferrer"
+                style={{ color: C.cyan, borderColor: C.cyan + "44", background: C.cyan + "12" }}>
+                <ExternalLink size={10} style={{ marginRight: 5, opacity: 0.85 }} />{r.label}
+              </a>
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -221,8 +245,8 @@ export function Findings() {
   return (
     <section className="rs-card">
       <div className="rs-card-h rs-th">
-        <span><ListChecks size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> MAJOR FINDINGS</span>
-        <span className="rs-src-tag">Paper — Results · Cross-Case Findings</span>
+        <span><ListChecks size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> WHAT THE FOUR CASES SHOW</span>
+        <span className="rs-src-tag">Cross-case findings</span>
       </div>
       <div className="rs-findings">
         {FINDINGS.map((f, i) => (
@@ -244,7 +268,11 @@ export function DefenseStack() {
     <section className="rs-card">
       <div className="rs-card-h rs-th">
         <span><ShieldCheck size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> LAYERED DEFENSE — WHAT ORGANIZATIONS CAN DO</span>
-        <span className="rs-src-tag">Paper — Discussion · NIST IR 8374 structure</span>
+        <a className="rs-src-tag rs-src-tag-link"
+          href="https://csrc.nist.gov/pubs/ir/8374/final"
+          target="_blank" rel="noopener noreferrer">
+          Structured on NIST IR 8374 <ExternalLink size={9} />
+        </a>
       </div>
       <div className="rs-hint">
         No single product stops every ransomware attack. Make entry harder, limit movement, detect earlier, and recover faster — the goal is to reduce the pressure to pay by creating viable recovery options before an incident occurs.
@@ -267,123 +295,9 @@ export function DefenseStack() {
           );
         })}
       </div>
-    </section>
-  );
-}
-
-/* --------------------------- Pay or not ---------------------------- */
-
-export function PayPanel() {
-  return (
-    <section className="rs-card rs-pay">
-      <div className="rs-card-h rs-th">
-        <span><Scale size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> SHOULD ORGANIZATIONS PAY THE RANSOM?</span>
-        <span className="rs-src-tag">Paper — the argument behind the title</span>
+      <div className="rs-card-note">
+        Further reading: <a className="rs-inline-link" href="https://www.cisa.gov/resources-tools/resources/stopransomware-guide" target="_blank" rel="noopener noreferrer">CISA #StopRansomware Guide</a> · <a className="rs-inline-link" href="https://www.fbi.gov/how-we-can-help-you/scams-and-safety/common-frauds-and-scams/ransomware" target="_blank" rel="noopener noreferrer">FBI ransomware guidance</a>
       </div>
-      <div className="rs-hint">{PAY.intro}</div>
-
-      <div className="rs-pay-grid">
-        <div className="rs-pay-col rs-pay-no">
-          <div className="rs-pay-h" style={{ color: C.red }}>
-            <Ban size={13} strokeWidth={2.4} /> WHAT A PAYMENT DOES NOT BUY
-          </div>
-          <ul>{PAY.notBuying.map((x) => <li key={x}>{x}</li>)}</ul>
-        </div>
-        <div className="rs-pay-col rs-pay-yes">
-          <div className="rs-pay-h" style={{ color: C.green }}>
-            <CheckCircle2 size={13} strokeWidth={2.4} /> WHAT PREPARATION BUYS
-          </div>
-          <ul>{PAY.buying.map((x) => <li key={x}>{x}</li>)}</ul>
-        </div>
-      </div>
-
-      <div className="rs-pay-positions">
-        {PAY.positions.map((p) => (
-          <div className="rs-pos" key={p.who}>
-            <span className="rs-pos-who">{p.who}</span>
-            <span className="rs-pos-what">{p.what}</span>
-          </div>
-        ))}
-      </div>
-
-      <div className="rs-pay-close">
-        <span className="rs-wolf">“To pay a ransom is to feed the wolf.”</span>
-        {PAY.close}
-      </div>
-    </section>
-  );
-}
-
-/* ------------------- Methodology, limits, sources ------------------- */
-
-export function MethodNotes() {
-  const [tab, setTab] = useState("method");
-  const TABS = [
-    { k: "method", label: "METHODOLOGY" },
-    { k: "limits", label: "LIMITATIONS" },
-    { k: "future", label: "FUTURE WORK" },
-    { k: "refs", label: `REFERENCES (${REFERENCES.length})` },
-  ];
-  return (
-    <section className="rs-card">
-      <div className="rs-card-h rs-th">
-        <span><BookOpen size={14} strokeWidth={2.2} style={{ color: C.cyan }} /> HOW THIS WAS RESEARCHED</span>
-        <div className="rs-filters">
-          {TABS.map((t) => (
-            <button key={t.k}
-              className={"rs-filter" + (tab === t.k ? " on" : "")}
-              onClick={() => setTab(t.k)}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {tab === "method" && (
-        <div className="rs-method">
-          <p className="rs-method-p">{METHOD.design}</p>
-          <div className="rs-hier">
-            {METHOD.hierarchy.map((h) => (
-              <div className="rs-hier-row" key={h.rank}>
-                <span className="rs-hier-n">{h.rank}</span>
-                <div>
-                  <div className="rs-hier-l">{h.label}</div>
-                  <div className="rs-hier-d">{h.detail}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="rs-method-p">{METHOD.selection}</p>
-        </div>
-      )}
-
-      {tab === "limits" && (
-        <ul className="rs-bullets">
-          {METHOD.limits.map((l) => <li key={l}>{l}</li>)}
-        </ul>
-      )}
-
-      {tab === "future" && (
-        <ul className="rs-bullets">
-          {FUTURE_WORK.map((f) => <li key={f}>{f}</li>)}
-        </ul>
-      )}
-
-      {tab === "refs" && (
-        <ol className="rs-refs">
-          {REFERENCES.map((r) => (
-            <li key={r.cite}>
-              {r.url ? (
-                <a href={r.url} target="_blank" rel="noopener noreferrer">
-                  {r.cite} <ExternalLink size={10} style={{ opacity: 0.7 }} />
-                </a>
-              ) : (
-                <span>{r.cite}</span>
-              )}
-            </li>
-          ))}
-        </ol>
-      )}
     </section>
   );
 }
@@ -393,47 +307,52 @@ export function MethodNotes() {
 export const paperCss = `
 .rs-src-tag{font-size:10px;letter-spacing:0.6px;color:${C.faint};
   font-family:ui-monospace,monospace;text-transform:none;font-weight:500;}
-.rs-src-link{display:inline-flex;align-items:center;gap:5px;font-size:11px;
-  color:${C.cyan};text-decoration:none;border:1px solid ${C.cyan}33;
-  background:${C.cyan}0e;border-radius:7px;padding:4px 9px;transition:filter .14s;}
-.rs-src-link:hover{filter:brightness(1.35);}
+.rs-src-tag-link{display:inline-flex;align-items:center;gap:4px;text-decoration:none;}
+.rs-src-tag-link:hover{color:${C.cyan};}
+.rs-inline-link{color:${C.cyan};text-decoration:none;border-bottom:1px solid ${C.cyan}44;}
+.rs-inline-link:hover{filter:brightness(1.3);}
 
-/* --- paper band --- */
-.rs-paper-course{font-size:10.5px;letter-spacing:0.8px;color:${C.muted};
-  font-family:ui-monospace,monospace;text-transform:none;font-weight:500;}
-.rs-paper-grid{display:grid;grid-template-columns:1fr 340px;gap:26px;}
-.rs-paper-title{margin:0;font-size:26px;font-weight:800;letter-spacing:0.2px;
-  line-height:1.15;color:${C.text};}
-.rs-paper-sub{margin-top:5px;font-size:14px;color:#C3CBDA;line-height:1.4;}
-.rs-paper-by{margin-top:11px;font-size:11.5px;color:${C.muted};
+/* --- extortion model --- */
+.rs-ext{display:flex;align-items:stretch;gap:3px;margin-top:6px;}
+.rs-ext-step{flex:1;min-width:0;background:${C.panel2};border:1px solid ${C.line};
+  border-top-width:2px;border-radius:0 0 11px 11px;padding:13px;
+  display:flex;flex-direction:column;}
+.rs-ext-top{display:flex;align-items:center;gap:7px;}
+.rs-ext-n{font-family:ui-monospace,monospace;font-size:11px;font-weight:800;
+  letter-spacing:1px;}
+.rs-ext-era{margin-left:auto;font-size:10px;color:${C.faint};
   font-family:ui-monospace,monospace;}
-.rs-paper-inst{margin-top:2px;font-size:11px;color:${C.faint};
-  font-family:ui-monospace,monospace;}
-.rs-thesis{display:flex;gap:9px;margin:15px 0 0;padding:12px 14px;
-  border-left:2px solid ${C.cyan};background:${C.cyan}0d;border-radius:0 9px 9px 0;
-  font-size:13px;line-height:1.55;color:#D7DCE7;}
-.rs-abs-toggle{margin-top:13px;}
-.rs-abstract{margin:11px 0 0;font-size:12.5px;line-height:1.65;color:#BFC7D6;
-  padding:12px 14px;background:${C.panel2};border:1px solid ${C.line};border-radius:10px;}
-.rs-rqs{background:${C.panel2};border:1px solid ${C.line};border-radius:12px;padding:15px;}
-.rs-rq-h{font-size:10.5px;letter-spacing:1.2px;color:${C.muted};font-weight:700;
-  font-family:ui-monospace,monospace;margin-bottom:11px;}
-.rs-rq{display:flex;gap:10px;font-size:12.5px;line-height:1.5;color:#D0D7E4;
-  padding:9px 0;border-top:1px solid ${C.lineSoft};}
-.rs-rq:first-of-type{border-top:none;padding-top:0;}
-.rs-rq-n{color:${C.cyan};font-family:ui-monospace,monospace;font-weight:700;
-  font-size:12px;flex:none;}
+.rs-ext-model{font-size:14px;font-weight:800;margin-top:7px;letter-spacing:0.2px;}
+.rs-ext-holds{font-size:11.5px;color:${C.text};font-weight:600;margin-top:4px;}
+.rs-ext-how{font-size:11.5px;line-height:1.55;color:${C.muted};margin-top:8px;flex:1;}
+.rs-ext-counter{font-size:11px;line-height:1.5;color:${C.faint};font-style:italic;
+  margin-top:9px;padding-top:9px;border-top:1px solid ${C.lineSoft};}
+.rs-ext-ex{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;}
+.rs-ext-tag{font-size:10.5px;padding:3px 7px;border-radius:6px;border:1px solid ${C.line};
+  color:${C.muted};background:${C.ink};font-family:ui-monospace,monospace;}
+.rs-ext-tag-btn{cursor:pointer;transition:all .14s;}
+.rs-ext-tag-btn:hover{color:${C.cyan};border-color:${C.cyan}55;}
+.rs-ext-arrow{display:grid;place-items:center;color:${C.faint};flex:none;}
 
-/* --- attack chain --- */
-.rs-chain{display:flex;align-items:stretch;gap:4px;margin-top:6px;}
-.rs-chain-step{flex:1;background:${C.panel2};border:1px solid ${C.line};
-  border-radius:11px;padding:13px 14px;min-width:0;}
-.rs-chain-n{font-family:ui-monospace,monospace;font-size:11px;color:${C.cyan};
-  font-weight:700;letter-spacing:1px;}
-.rs-chain-stage{font-size:13.5px;font-weight:700;color:${C.text};margin-top:3px;}
-.rs-chain-list{margin:9px 0 0;padding-left:15px;font-size:12px;line-height:1.65;
-  color:${C.muted};}
-.rs-chain-arrow{display:grid;place-items:center;color:${C.faint};flex:none;}
+/* --- payment outcomes --- */
+.rs-po-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;}
+.rs-po{background:${C.panel2};border:1px solid ${C.line};border-radius:11px;
+  padding:14px;display:flex;flex-direction:column;}
+.rs-po-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.rs-po-case{font-size:13.5px;font-weight:700;color:${C.text};line-height:1.25;}
+.rs-po-year{font-size:10.5px;color:${C.faint};font-family:ui-monospace,monospace;
+  margin-top:2px;}
+.rs-po-badge{font-size:9.5px;letter-spacing:0.8px;font-weight:700;padding:3px 7px;
+  border-radius:6px;border:1px solid;font-family:ui-monospace,monospace;flex:none;
+  white-space:nowrap;}
+.rs-po-amt{font-size:12.5px;font-weight:700;margin-top:9px;
+  font-family:ui-monospace,monospace;}
+.rs-po-body{font-size:11.5px;line-height:1.55;color:${C.muted};margin-top:7px;flex:1;}
+.rs-po-verdict{font-size:11.5px;line-height:1.5;color:#D2D8E4;margin-top:9px;
+  padding-top:9px;border-top:1px solid ${C.lineSoft};font-weight:600;}
+.rs-po-ref{display:inline-flex;align-items:center;gap:5px;margin-top:10px;font-size:11px;
+  color:${C.cyan};text-decoration:none;}
+.rs-po-ref:hover{filter:brightness(1.3);}
 
 /* --- case studies --- */
 .rs-case-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0 14px;}
@@ -461,13 +380,19 @@ export const paperCss = `
 .rs-qualified{display:flex;gap:9px;margin-top:12px;padding:10px 12px;font-size:12px;
   line-height:1.55;color:#D5CBB4;background:${C.amber}12;
   border:1px solid ${C.amber}33;border-radius:9px;}
+.rs-case-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px;}
+.rs-case-stat{background:${C.ink};border:1px solid ${C.line};border-left-width:2px;
+  border-radius:0 9px 9px 0;padding:11px 13px;}
+.rs-case-stat-v{font-size:19px;font-weight:800;letter-spacing:0.2px;line-height:1.1;}
+.rs-case-stat-l{font-size:11px;color:${C.muted};margin-top:4px;line-height:1.35;}
 .rs-case-themes{margin-top:15px;display:flex;flex-direction:column;gap:12px;}
 .rs-case-theme{display:grid;grid-template-columns:186px 1fr;gap:16px;align-items:start;}
 .rs-case-theme-l{font-size:10px;letter-spacing:1px;color:${C.muted};font-weight:700;
   font-family:ui-monospace,monospace;padding:2px 0 2px 11px;border-left:2px solid;}
 .rs-case-theme-b{font-size:13px;line-height:1.6;color:#D2D8E4;}
-.rs-case-srcs{display:flex;gap:7px;flex-wrap:wrap;margin-top:16px;
-  padding-top:14px;border-top:1px solid ${C.line};}
+.rs-case-refs{margin-top:16px;padding-top:14px;border-top:1px solid ${C.line};}
+.rs-case-refs-h{font-size:10px;letter-spacing:1px;color:${C.muted};font-weight:700;
+  font-family:ui-monospace,monospace;margin-bottom:8px;}
 
 /* --- findings --- */
 .rs-findings{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;}
@@ -493,54 +418,18 @@ export const paperCss = `
 .rs-def-note{margin-top:11px;padding-top:10px;border-top:1px solid ${C.lineSoft};
   font-size:11px;line-height:1.5;color:${C.faint};font-style:italic;}
 
-/* --- pay --- */
-.rs-pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:6px;}
-.rs-pay-col{border:1px solid ${C.line};border-radius:11px;padding:13px 15px;
-  background:${C.panel2};}
-.rs-pay-no{border-color:${C.red}33;background:${C.red}0b;}
-.rs-pay-yes{border-color:${C.green}33;background:${C.green}0b;}
-.rs-pay-h{display:flex;align-items:center;gap:6px;font-size:10.5px;letter-spacing:1px;
-  font-weight:700;font-family:ui-monospace,monospace;margin-bottom:9px;}
-.rs-pay-col ul{margin:0;padding-left:16px;font-size:12.5px;line-height:1.75;color:#D2D8E4;}
-.rs-pay-positions{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:11px;}
-.rs-pos{background:${C.panel2};border:1px solid ${C.line};border-radius:11px;
-  padding:12px 14px;}
-.rs-pos-who{display:block;font-size:10.5px;letter-spacing:1.2px;font-weight:700;
-  color:${C.cyan};font-family:ui-monospace,monospace;margin-bottom:6px;}
-.rs-pos-what{font-size:12.5px;line-height:1.55;color:#D2D8E4;}
-.rs-pay-close{margin-top:13px;padding:14px 16px;border-radius:11px;
-  border:1px solid ${C.line};background:${C.ink};font-size:13px;line-height:1.6;
-  color:#D2D8E4;}
-.rs-wolf{display:block;font-size:15px;font-weight:700;color:${C.red};
-  margin-bottom:7px;letter-spacing:0.2px;}
-
-/* --- method / limits / refs --- */
-.rs-method-p{margin:0 0 13px;font-size:13px;line-height:1.6;color:#D2D8E4;}
-.rs-hier{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
-.rs-hier-row{display:flex;gap:12px;align-items:flex-start;background:${C.panel2};
-  border:1px solid ${C.line};border-radius:10px;padding:11px 13px;}
-.rs-hier-n{font-family:ui-monospace,monospace;font-size:14px;font-weight:800;
-  color:${C.cyan};flex:none;width:16px;}
-.rs-hier-l{font-size:12.5px;font-weight:700;color:${C.text};}
-.rs-hier-d{font-size:12px;line-height:1.55;color:${C.muted};margin-top:3px;}
-.rs-bullets{margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:#D2D8E4;}
-.rs-bullets li{margin-bottom:7px;}
-.rs-refs{margin:0;padding-left:20px;font-size:12.5px;line-height:1.65;color:${C.muted};}
-.rs-refs li{margin-bottom:7px;}
-.rs-refs a{color:${C.text};text-decoration:none;border-bottom:1px solid ${C.line};}
-.rs-refs a:hover{color:${C.cyan};border-color:${C.cyan}66;}
-
 @media (max-width: 1080px){
-  .rs-paper-grid{grid-template-columns:1fr;}
-  .rs-chain{flex-direction:column;}
-  .rs-chain-arrow{transform:rotate(90deg);padding:2px 0;}
   .rs-case-tabs{grid-template-columns:repeat(2,1fr);}
   .rs-findings{grid-template-columns:repeat(2,1fr);}
   .rs-def-grid{grid-template-columns:repeat(2,1fr);}
+  .rs-po-grid{grid-template-columns:repeat(2,1fr);}
+  .rs-ext{flex-direction:column;}
+  .rs-ext-arrow{transform:rotate(90deg);padding:2px 0;}
 }
 @media (max-width: 720px){
   .rs-case-tabs{grid-template-columns:1fr;}
+  .rs-case-stats{grid-template-columns:1fr;}
   .rs-case-theme{grid-template-columns:1fr;gap:5px;}
-  .rs-findings,.rs-def-grid,.rs-pay-grid,.rs-pay-positions{grid-template-columns:1fr;}
+  .rs-findings,.rs-def-grid,.rs-po-grid{grid-template-columns:1fr;}
 }
 `;
