@@ -1,4 +1,27 @@
+# --- build output & dependencies ---
 node_modules
 dist
 *.local
 .DS_Store
+
+# --- course deliverables (kept locally, not in the repo) ---
+# The paper and the deck, plus anything exported from them. This repo is the
+# website's source; the write-up lives in Google Docs.
+*.docx
+*.pptx
+*.pdf
+*.odt
+~$*
+
+# --- authoring & handoff material ---
+# Figures, tables, build scripts and instructions produced for the paper and
+# presentation. Not part of the site.
+handoff/
+
+# --- editor & tooling leftovers ---
+.~lock.*#
+.ssrcheck.jsx
+.ssrout/
+.deckpdf/
+.live.html
+.live.js
