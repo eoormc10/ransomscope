@@ -10,6 +10,11 @@ import {
   Plus, Check, ArrowLeftRight, History, Rss, RefreshCw,
 } from "lucide-react";
 import { WORKER_URL } from "./config.js";
+import { C } from "./theme.js";
+import {
+  PaperBand, AttackChain, CaseStudies, Findings, DefenseStack, PayPanel,
+  MethodNotes, paperCss,
+} from "./PaperSections.jsx";
 
 /* ------------------------------------------------------------------ *
  * RANSOMSCOPE — Threat Actor Intelligence Console
@@ -17,23 +22,6 @@ import { WORKER_URL } from "./config.js";
  * CISA/FBI advisories, Chainalysis, DOJ/Europol, vendor IR reports).
  * Figures are reported/approximate and intended for education.
  * ------------------------------------------------------------------ */
-
-const C = {
-  ink: "#0A0D14",
-  panel: "#10151F",
-  panel2: "#161C28",
-  line: "#232C3C",
-  lineSoft: "#1B2230",
-  text: "#E9EDF5",
-  muted: "#828FA6",
-  faint: "#5A6478",
-  red: "#F0454F",     // active threat
-  amber: "#E5A23A",   // disrupted
-  slate: "#58647A",   // defunct
-  cyan: "#36CFC0",    // data / selection accent
-  violet: "#8C7BFF",  // secondary data
-  green: "#34D399",   // live / fresh indicator
-};
 
 const STATUS = {
   active:    { label: "ACTIVE",    color: C.red,   icon: ShieldAlert },
@@ -1198,7 +1186,7 @@ function LiveFeed({ s, onRefresh }) {
       {s.error && !s.loading && (
         <div className="rs-live-state rs-live-err">
           ⚠️ Could not load live data: {s.error}{" "}
-          <button className="rs-filter" onClick={load}>RETRY</button>
+          <button className="rs-filter" onClick={() => onRefresh(true)}>RETRY</button>
         </div>
       )}
 
@@ -1292,6 +1280,14 @@ export default function RansomScope() {
   const [live, loadLive] = useLiveFeed();
   const liveFresh = feedFresh(live.updated);
 
+  // Case studies link back to the actor profiles above — select + scroll.
+  const jumpToGroup = (id) => {
+    if (!GROUP_BY_ID[id]) return;
+    setSelected(id);
+    document.getElementById("rs-profile")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const toggleCompare = (id) =>
     setCompareIds((prev) =>
       prev.includes(id)
@@ -1358,7 +1354,7 @@ export default function RansomScope() {
 
   return (
     <div className="rs-root">
-      <style>{css}</style>
+      <style>{css + paperCss}</style>
 
       {/* header */}
       <header className="rs-header">
@@ -1380,6 +1376,9 @@ export default function RansomScope() {
           )}
         </div>
       </header>
+
+      {/* the paper this console visualizes */}
+      <PaperBand />
 
       {/* KPIs */}
       <section className="rs-kpis">
@@ -1467,7 +1466,7 @@ export default function RansomScope() {
       </section>
 
       {/* roster + detail */}
-      <section className="rs-main">
+      <section className="rs-main" id="rs-profile">
         <div className="rs-roster">
           <div className="rs-roster-h">
             <div className="rs-roster-title">
@@ -1616,12 +1615,23 @@ export default function RansomScope() {
         </ChartCard>
       </section>
 
+      {/* ---- from the paper: how incidents unfold, and what to do ---- */}
+      <AttackChain />
+      <CaseStudies onSelectGroup={jumpToGroup} />
+      <Findings />
+      <DefenseStack />
+      <PayPanel />
+
       {/* live feed (Cloudflare Worker proxy) */}
       <LiveFeed s={live} onRefresh={loadLive} />
+
+      {/* methodology, limitations, works cited */}
+      <MethodNotes />
 
       <footer className="rs-footer">
         <span>SOURCES — GuidePoint/GRIT · Check Point Research · CISA/FBI advisories · Chainalysis · DOJ &amp; Europol · vendor IR reporting.</span>
         <span>Figures are reported/approximate and compiled for educational use. Not operational intelligence.</span>
+        <span>Companion to “To Pay a Ransom Is to Feed the Wolf” — Rios, Mendoza &amp; Reyes · CSCE 701, Texas A&amp;M University · July 2026.</span>
       </footer>
     </div>
   );
